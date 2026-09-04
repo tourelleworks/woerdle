@@ -1,6 +1,6 @@
 // Service Worker - network-first (automatische Updates, offline via Cache).
 // Spielstände & Statistik liegen in localStorage und werden NIE angefasst.
-const CACHE_VERSION = "woerdle-v17";
+const CACHE_VERSION = "woerdle-v18";
 const DATEIEN = [
   "index.html",
   "style.css",
@@ -13,6 +13,8 @@ const DATEIEN = [
   "icons/flag-de.svg",
   "icons/flag-gb.svg",
   "icons/cat-silhouette.svg",
+  "icons/favicon.svg",
+  "icons/favicon-32.png",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.addAll(DATEIEN)));
