@@ -11,10 +11,14 @@
             "id": "a352454b9013aad4",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Neuer Tab"
+              "title": "README"
             }
           }
         ]
@@ -182,5 +186,11 @@
     }
   },
   "active": "a352454b9013aad4",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "CLAUDE.md",
+    "icons/icon-192.png",
+    "icons/favicon-32.png",
+    "icons/favicon.svg",
+    "icons/cat-silhouette.svg"
+  ]
 }

@@ -2,10 +2,17 @@
 .DS_Store
 Thumbs.db
 
-# Editor
+# Editor / lokale Werkzeuge
 .vscode/
 .idea/
+.obsidian/
 *.swp
+
+# Dokumentation bleibt lokal (Obsidian) und gehoert nicht ins Repository.
+# Alle Notizen im Ordner "notizen/" ablegen, dann sind sie automatisch ignoriert.
+notizen/
+CLAUDE.md
+# README.md   <- Raute entfernen, falls auch die README lokal bleiben soll
 
 # Node (falls du später Tools nutzt)
 node_modules/
