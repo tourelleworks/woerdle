@@ -8,7 +8,7 @@
 const WORTLAENGE = 5;
 const MAX_VERSUCHE = 6;
 const STAT_SCHLUESSEL = "woerdle-statistik";
-const APP_VERSION = "2.5";   // bei jedem Release hochzaehlen
+const APP_VERSION = "2.6";   // bei jedem Release hochzaehlen
 
 // --- Texte je Sprache ---
 const TEXTE = {
@@ -477,10 +477,14 @@ function heuteText() {
 }
 function wortDesTages() {
   const liste = zielListe();
-  const start = new Date(2026, 0, 1);
   const jetzt = new Date();
+  // Über Date.UTC zählen, weil lokale Zeiten bei der Sommerzeit eine Stunde
+  // verrutschen: Das neue Wort kam sonst im Sommer erst um 1 Uhr, und zwischen
+  // 0 und 1 Uhr gab es am neuen Tag noch einmal das Wort von gestern.
+  const start = Date.UTC(2026, 0, 1);
+  const heute = Date.UTC(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate());
   const einTag = 1000 * 60 * 60 * 24;
-  const tage = Math.floor((jetzt - start) / einTag);
+  const tage = Math.floor((heute - start) / einTag);
   let index = tage % liste.length;
   if (index < 0) {
     index = index + liste.length;
@@ -502,11 +506,16 @@ function speichereVerwendet(liste) {
 }
 function naechstesZielwort() {
   const liste = zielListe();
+  // Das heutige Tageswort auslassen, damit es nicht am selben Tag auch im Endlos-Modus kommt.
+  const todaysWord = wortDesTages();
   let verwendet = ladeVerwendet();
-  let uebrig = liste.filter((w) => !verwendet.includes(w));
+  let uebrig = liste.filter((w) => !verwendet.includes(w) && w !== todaysWord);
   if (uebrig.length === 0) {
+    // Alle Wörter waren dran, neue Runde. Das zuletzt gespielte Wort auslassen,
+    // sonst könnte es am Rundenwechsel direkt zweimal hintereinander kommen.
+    const lastWord = verwendet[verwendet.length - 1];
     verwendet = [];
-    uebrig = liste.slice();
+    uebrig = liste.filter((w) => w !== lastWord && w !== todaysWord);
   }
   const wort = uebrig[Math.floor(Math.random() * uebrig.length)];
   verwendet.push(wort);
