@@ -9,7 +9,8 @@ const WORTLAENGE = 5;
 const MAX_VERSUCHE = 6;
 const STAT_SCHLUESSEL = "woerdle-statistik";
 const STATS_OPEN_DELAY_MS = 1600;
-const APP_VERSION = "2.8";   // bei jedem Release hochzaehlen
+const NEW_DAY_CHECK_MS = 60000;
+const APP_VERSION = "2.9";   // bei jedem Release hochzaehlen
 
 // --- Texte je Sprache ---
 const TEXTE = {
@@ -18,7 +19,7 @@ const TEXTE = {
     fill5: "Bitte alle 5 Felder ausfüllen.",
     notinlist: "Dieses Wort ist nicht in der Liste.",
     won: "Gewonnen! 🎉", lost: "Verloren. Lösung: ",
-    comeback: " (Komm morgen wieder!)", copied: "Ergebnis kopiert! 📋",
+    comeback: " (Komm morgen wieder!)", copied: "Ergebnis kopiert! 📋", copyFailed: "Kopieren nicht möglich",
     share: "Ergebnis kopieren", again: "Nochmal spielen",
     played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
     stats: "Statistik", guesses: "Versuche", nextWord: "Nächstes Wort in", langName: "Deutsch",
@@ -33,7 +34,7 @@ const TEXTE = {
     fill5: "Please fill all 5 boxes.",
     notinlist: "This word is not in the list.",
     won: "You won! 🎉", lost: "You lost. Answer: ",
-    comeback: " (Come back tomorrow!)", copied: "Result copied! 📋",
+    comeback: " (Come back tomorrow!)", copied: "Result copied! 📋", copyFailed: "Could not copy",
     share: "Copy result", again: "Play again",
     played: "Played", winRate: "Win %", streak: "Streak", best: "Best",
     stats: "Statistics", guesses: "Guesses", nextWord: "Next word in", langName: "English",
@@ -71,6 +72,7 @@ let teilenText = "";
 let tagesDatum = "";           // Datum, zu dem das aktuelle Tagesspiel gehoert
 let statsOpenTimer = null;     // verzögertes Öffnen des Dialogs nach Spielende
 let countdownTimer = null;     // zählt im Dialog bis zum nächsten Tageswort herunter
+let shownDay = "";             // Tag, an dem das Spiel zuletzt gestartet wurde
 const felder = [];
 
 // --- kleine Helfer ---
@@ -581,13 +583,22 @@ function baueTeilenText(gewonnen) {
   }
   return kopf + "\n" + zeilen.join("\n");
 }
-function ergebnisTeilen() {
+// Rückmeldung am Knopf selbst, denn die Meldungszeile liegt hinter dem Dialog.
+function showShareFeedback(text) {
   const action = document.getElementById("stats-action");
-  // Rückmeldung am Knopf selbst, denn die Meldungszeile liegt hinter dem Dialog.
-  navigator.clipboard.writeText(teilenText).then(() => {
-    action.textContent = t("copied");
-    setTimeout(() => { action.textContent = t("share"); }, 2000);
-  });
+  action.textContent = text;
+  setTimeout(() => { action.textContent = t("share"); }, 2000);
+}
+function ergebnisTeilen() {
+  // Ohne HTTPS gibt es die Zwischenablage gar nicht, und der Browser kann den Zugriff auch verweigern.
+  // Beides muss sichtbar werden, sonst sieht es so aus, als wäre der Knopf kaputt.
+  if (navigator.clipboard === undefined) {
+    showShareFeedback(t("copyFailed"));
+    return;
+  }
+  navigator.clipboard.writeText(teilenText)
+    .then(() => showShareFeedback(t("copied")))
+    .catch(() => showShareFeedback(t("copyFailed")));
 }
 
 // ------------------------------------------------------------
@@ -822,6 +833,7 @@ function boardZuruecksetzen() {
 }
 
 function spielStarten() {
+  shownDay = heuteText();
   boardZuruecksetzen();
   const g = ladeSpielstand();
 
@@ -860,18 +872,41 @@ function spielStarten() {
       ZIEL = g.ziel;
       spielstandWiederherstellen(g);
     } else {
-      ZIEL = naechstesZielwort();
+      startNextEndlessWord();
     }
   }
-  console.log("Zielwort:", ZIEL);
+}
+
+// Das neue Wort sofort speichern, auch ohne Rateversuch. Sonst würde jedes Neuladen und jeder
+// Wechsel von Modus oder Sprache ein weiteres Wort ziehen und das alte ungespielt als "dran gewesen" zählen.
+function startNextEndlessWord() {
+  ZIEL = naechstesZielwort();
+  spielSpeichern(false, false);
+}
+
+// Eine App kann über Nacht offen bleiben, auf dem Handy auch im Hintergrund. Ohne diese Prüfung
+// zeigt sie dann bis zum nächsten Neuladen weiter das Rätsel von gestern.
+function checkForNewDay() {
+  const today = heuteText();
+  if (today === shownDay) {
+    return;
+  }
+  // Einen offenen Dialog nicht wegziehen, beim Schließen wird erneut geprüft.
+  if (document.getElementById("stats-dialog").open) {
+    return;
+  }
+  shownDay = today;
+  // Das Endlos-Spiel hängt nicht am Datum und läuft einfach weiter.
+  if (modus === "taeglich") {
+    spielStarten();
+  }
 }
 
 // "Weiterspielen" im Endlos-Modus: alten Stand verwerfen, neues Wort
 function neuesEndlosSpiel() {
   localStorage.removeItem(spielSchluessel());
   boardZuruecksetzen();
-  ZIEL = naechstesZielwort();
-  console.log("Zielwort:", ZIEL);
+  startNextEndlessWord();
 }
 
 // --- Tagesrätsel-Frage: altes weiterspielen vs. neues Wort ---
@@ -883,7 +918,6 @@ function neuesTageswort() {
   boardZuruecksetzen();
   ZIEL = wortDesTages();
   tagesDatum = heuteText();
-  console.log("Zielwort (heute):", ZIEL);
   spielSpeichern(false, false); // heutiges (leeres) Tagesspiel sichern, ersetzt das alte
 }
 // kleiner Knopf, um beim Weiterspielen jederzeit zum heutigen Wort zu wechseln
@@ -933,7 +967,10 @@ statsDialog.addEventListener("click", (event) => {
   }
 });
 // Läuft bei jedem Schließen, auch per Esc-Taste.
-statsDialog.addEventListener("close", () => clearInterval(countdownTimer));
+statsDialog.addEventListener("close", () => {
+  clearInterval(countdownTimer);
+  checkForNewDay();
+});
 // Maus-Klicks hinterlassen sonst den Fokus auf dem Knopf, und Enter würde ihn erneut auslösen.
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
@@ -944,6 +981,11 @@ document.addEventListener("click", (event) => {
 document.getElementById("modus-taeglich").addEventListener("click", () => modusSetzen("taeglich"));
 document.getElementById("modus-endlos").addEventListener("click", () => modusSetzen("endlos"));
 document.getElementById("sprache").addEventListener("click", spracheUmschalten);
+// Zurück in die App (Tab-Wechsel, Handy entsperrt) oder lange offen auf dem Schirm: neuer Tag?
+document.addEventListener("visibilitychange", checkForNewDay);
+window.addEventListener("focus", checkForNewDay);
+window.addEventListener("pageshow", checkForNewDay);
+setInterval(checkForNewDay, NEW_DAY_CHECK_MS);
 uiTexteSetzen();
 modusAnzeigen();
 spielStarten();

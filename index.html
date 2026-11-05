@@ -38,7 +38,8 @@
       <button id="modus-endlos" class="modus-knopf">Endlos</button>
     </div>
     <!-- Das Raster (6 Zeilen x 5 Felder) wird per JavaScript gefüllt. -->
-    <div id="raster" class="raster"></div>
+    <!-- Die Hülle gibt dem Raster die freie Höhe vor, siehe .raster-box in style.css. -->
+    <div class="raster-box"><div id="raster" class="raster"></div></div>
 
     <!-- Kurze Meldungen (z. B. "Gewonnen!") kommen später hier rein. -->
     <p id="meldung" class="meldung"></p>

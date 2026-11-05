@@ -194,7 +194,8 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 .app-footer {
   display: block;
   position: fixed;
-  bottom: 2px;
+  /* Oben rechts unter der Kopfzeile ist immer frei, unten läge sie auf der Löschen-Taste */
+  top: 50px;
   right: 6px;
   padding: 0;
   margin: 0;
@@ -359,3 +360,56 @@ body { touch-action: manipulation; }
   cursor: pointer;
 }
 .stats-aktion[hidden] { display: none; }
+
+/* Nur das Spielfeld darf schrumpfen, sonst drücken Meldung und Knöpfe die Tastatur aus dem Bild */
+.modus-wahl, .meldung, .tages-frage, .neustart, .tastatur { flex-shrink: 0; }
+
+/* Ältere Browser ohne cqh behalten einfach die feste Feldgröße von weiter oben. */
+@supports (height: 1cqh) {
+  /* Die Hülle ist so hoch wie das volle Raster (6 Felder + 5 Abstände à 6px) und gibt nach, wenn der Platz fehlt. */
+  .raster-box {
+    display: flex;
+    justify-content: center;
+    flex: 0 1 calc(6 * min(58px, 14vw) + 30px);
+    min-height: 0;
+    width: 100%;
+    container-type: size;
+  }
+  /* 100cqh ist die Höhe, die die Hülle tatsächlich bekommen hat. */
+  .raster {
+    --cell: min(58px, 14vw, calc((100cqh - 30px) / 6));
+    grid-template-columns: repeat(5, var(--cell));
+    grid-auto-rows: var(--cell);
+    margin-bottom: 0;
+  }
+  .feld { font-size: calc(var(--cell) * 0.55); }
+}
+
+/* Handy im Querformat: Übereinander wäre für Raster und Tastatur zu wenig Höhe, also nebeneinander. */
+@media (orientation: landscape) and (max-height: 500px) {
+  main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 500px);
+    /* Modus, Meldung, Frage, Neustart, freier Platz, Tastatur */
+    grid-template-rows: auto auto auto auto 1fr auto;
+    justify-content: center;
+    column-gap: 16px;
+  }
+  .raster-box {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    width: auto;
+    container-type: normal;
+  }
+  /* Hier zählt die Fensterhöhe: 92px = Kopfzeile 46px + Innenabstand 16px + 5 Abstände à 6px. */
+  .raster { --cell: min(58px, calc((100dvh - 92px) / 6)); }
+  .modus-wahl, .meldung, .tages-frage, .neustart {
+    grid-column: 2;
+    justify-self: center;
+  }
+  .modus-wahl { margin-bottom: 4px; }
+  #tastatur {
+    grid-column: 2;
+    grid-row: 6;
+  }
+}
