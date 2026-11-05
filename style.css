@@ -150,23 +150,13 @@ code {
 }
 .feld.aufgedeckt { animation: aufdecken 0.5s ease; }
 
-.teilen {
-  margin-top: 8px;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  background: #4f46e5;
-  cursor: pointer;
+/* Rückmeldung bei ungültigem Wort: Die Zeile wackelt kurz */
+@keyframes wackeln {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
-.statistik {
-  margin-top: 12px;
-  color: #a1a1aa;
-  font-size: 0.85rem;
-  text-align: center;
-}
+.feld.wackeln { animation: wackeln 0.12s linear 3; }
 
 .modus-wahl { display: flex; gap: 6px; margin-bottom: 14px; }
 .modus-knopf {
@@ -214,8 +204,8 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 }
 .raster { margin-bottom: 2px; }
 .meldung { min-height: 1.2em; margin: 0; }
-.statistik { margin-top: 2px; }
-#tastatur { margin-top: 4px; }
+/* margin-top auto schiebt die Tastatur an den unteren Rand, so bleibt sie immer an derselben Stelle */
+#tastatur { margin-top: auto; }
 
 .app-header h1 {
   display: flex;
@@ -235,15 +225,30 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
   padding: 0;
   flex: 1 1 0;
 }
-.taste-breit { font-size: 1rem; }
+/* flex muss hier nochmal stehen, weil die allgemeine .taste-Regel direkt darüber sonst gewinnt */
+.taste-breit { font-size: 1rem; flex: 1.5 1 0; }
+.taste-enter { font-size: 0.72rem; }
 
-/* Sprach-Knopf mit Flagge, rechts oben in der Kopfzeile */
+/* Knöpfe rechts oben in der Kopfzeile: Statistik und Sprache */
 .app-header { position: relative; }
-.sprache-knopf {
+.kopf-knoepfe {
   position: absolute;
   top: 50%;
   right: 10px;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kopf-knopf {
+  display: flex;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.sprache-knopf {
   padding: 2px;
   border: 1px solid var(--rahmen);
   border-radius: 5px;
@@ -272,7 +277,7 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 
 /* Doppeltipp-Zoom auf dem Handy verhindern */
 body { touch-action: manipulation; }
-.taste, .feld, .modus-knopf, .neustart, .teilen, .sprache-knopf {
+.taste, .feld, .modus-knopf, .neustart, .sprache-knopf, .kopf-knopf, .stats-aktion, .stats-schliessen {
   touch-action: manipulation;
 }
 
@@ -288,3 +293,69 @@ body { touch-action: manipulation; }
   color: var(--text);
 }
 .tages-frage[hidden] { display: none; }
+
+/* Statistik-Dialog */
+.stats-dialog {
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--rahmen);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+.stats-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+/* Eigene Innenfläche: So zählt nur ein Klick neben den Dialog als Schließen */
+.stats-inhalt { position: relative; padding: 20px; }
+.stats-schliessen {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.stats-inhalt h2 { margin: 0; font-size: 1.1rem; text-align: center; }
+.stats-inhalt h3 { margin: 16px 0 6px; font-size: 0.9rem; text-align: center; }
+.stats-modus { margin: 2px 0 14px; color: #a1a1aa; font-size: 0.8rem; text-align: center; }
+.stats-kacheln {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  text-align: center;
+}
+.stats-kacheln strong { display: block; font-size: 1.7rem; font-weight: 600; }
+.stats-kacheln span { font-size: 0.72rem; color: #a1a1aa; }
+
+.verteilung-zeile { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 0.85rem; }
+.verteilung-nummer { width: 1em; text-align: center; }
+.verteilung-spur { flex: 1; }
+/* min-width hält auch bei 0 Siegen Platz für die Zahl frei */
+.verteilung-balken {
+  min-width: 1.7em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--grau);
+  font-weight: 600;
+  text-align: right;
+}
+.verteilung-balken.aktuell { background: #4f46e5; }
+
+.naechstes-wort { margin: 16px 0 0; font-size: 0.9rem; text-align: center; }
+.stats-aktion {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: #4f46e5;
+  cursor: pointer;
+}
+.stats-aktion[hidden] { display: none; }

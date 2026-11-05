@@ -20,7 +20,16 @@
 <header class="app-header">
   <img src="icons/cat-silhouette.svg" alt="" class="katze-ecke" />
   <h1><img src="icons/icon-192.png" alt="Logo" class="logo" /> Wördle</h1>
-  <button id="sprache" class="sprache-knopf" aria-label="Sprache wechseln"><img id="sprache-flagge" alt="" /></button>
+  <div class="kopf-knoepfe">
+    <button id="stats-button" class="kopf-knopf" aria-label="Statistik">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor">
+        <rect x="4" y="12" width="4" height="8" rx="1" />
+        <rect x="10" y="4" width="4" height="16" rx="1" />
+        <rect x="16" y="8" width="4" height="12" rx="1" />
+      </svg>
+    </button>
+    <button id="sprache" class="sprache-knopf" aria-label="Sprache wechseln"><img id="sprache-flagge" alt="" /></button>
+  </div>
 </header>
 
   <main>
@@ -39,8 +48,6 @@
       <button id="btn-tag-2" class="modus-knopf"></button>
     </div>
     <button id="neustart" class="neustart" hidden>Nochmal spielen</button>
-    <button id="teilen" class="teilen" hidden>Ergebnis kopieren</button>
-    <div id="statistik" class="statistik"></div>
 
     <p class="hint">
       Tippe ein 5-Buchstaben-Wort und drück <strong>Enter</strong>.<br />
@@ -51,6 +58,25 @@
   <footer class="app-footer">
     <span id="pwa-status">Web-Version</span>
   </footer>
+
+  <!-- Statistik-Dialog: dialog bringt Fokus, Esc-Taste und abgedunkelten Hintergrund schon mit. -->
+  <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
+    <div class="stats-inhalt">
+      <button id="stats-close" class="stats-schliessen" aria-label="Schließen">×</button>
+      <h2 id="stats-title"></h2>
+      <p id="stats-mode" class="stats-modus"></p>
+      <div class="stats-kacheln">
+        <div><strong id="stat-played"></strong><span id="label-played"></span></div>
+        <div><strong id="stat-win-rate"></strong><span id="label-win-rate"></span></div>
+        <div><strong id="stat-streak"></strong><span id="label-streak"></span></div>
+        <div><strong id="stat-best"></strong><span id="label-best"></span></div>
+      </div>
+      <h3 id="distribution-title"></h3>
+      <div id="distribution"></div>
+      <p id="next-word" class="naechstes-wort" hidden></p>
+      <button id="stats-action" class="stats-aktion" hidden></button>
+    </div>
+  </dialog>
 
   <!-- Reihenfolge wichtig: erst die Wörter, dann die Spiel-Logik. -->
 <script src="woerter.js"></script>

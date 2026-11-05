@@ -1,6 +1,6 @@
 // Service Worker - network-first (automatische Updates, offline via Cache).
 // Spielstände & Statistik liegen in localStorage und werden NIE angefasst.
-const CACHE_VERSION = "woerdle-v20";
+const CACHE_VERSION = "woerdle-v21";
 const DATEIEN = [
   "index.html",
   "style.css",
@@ -30,7 +30,10 @@ self.addEventListener("activate", (event) => {
 });
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    fetch(event.request)
+    // "no-cache" fragt bei jeder Datei beim Server nach, ob sie noch aktuell ist. Ohne das nimmt
+    // der Browser Dateien aus seinem HTTP-Cache, und nach einem Update kann eine alte index.html
+    // auf eine neue app.js treffen. Das Skript bricht dann ab und das Spiel bleibt leer.
+    fetch(event.request, { cache: "no-cache" })
       .then((antwort) => {
         const kopie = antwort.clone();
         caches.open(CACHE_VERSION).then((c) => c.put(event.request, kopie));

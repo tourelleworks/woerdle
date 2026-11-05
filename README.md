@@ -18,7 +18,8 @@ Ein Wortratespiel auf Deutsch und Englisch: Errate das 5-Buchstaben-Wort in
   bevor sich eines wiederholt.
 - **Spielstände bleiben erhalten** – Tages- und Endlos-Spiel werden je Sprache
   gespeichert und beim nächsten Start wiederhergestellt.
-- **Statistik** – gespielte Spiele, Siegquote und Streak.
+- **Statistik** – gespielte Spiele, Siegquote, Streak und Verteilung der Versuche,
+  getrennt je Modus und Sprache.
 - **Ergebnis teilen** – Emoji-Raster mit Datum und Sprach-Flagge in die
   Zwischenablage kopieren.
 - **PWA** – auf dem Handy installierbar, offline spielbar, aktualisiert sich

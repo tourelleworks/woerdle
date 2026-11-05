@@ -8,7 +8,8 @@
 const WORTLAENGE = 5;
 const MAX_VERSUCHE = 6;
 const STAT_SCHLUESSEL = "woerdle-statistik";
-const APP_VERSION = "2.7";   // bei jedem Release hochzaehlen
+const STATS_OPEN_DELAY_MS = 1600;
+const APP_VERSION = "2.8";   // bei jedem Release hochzaehlen
 
 // --- Texte je Sprache ---
 const TEXTE = {
@@ -19,7 +20,8 @@ const TEXTE = {
     won: "Gewonnen! 🎉", lost: "Verloren. Lösung: ",
     comeback: " (Komm morgen wieder!)", copied: "Ergebnis kopiert! 📋",
     share: "Ergebnis kopieren", again: "Nochmal spielen",
-    played: "Gespielt", wins: "Siege", streak: "Streak", best: "Beste",
+    played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
+    stats: "Statistik", guesses: "Versuche", nextWord: "Nächstes Wort in", langName: "Deutsch",
     shareTitle: "Wördle", langBtn: "EN",
     newDaily: "Neues Tagesrätsel verfügbar!",
     continueBtn: "Weiterspielen", newWordBtn: "Neues Wort",
@@ -33,7 +35,8 @@ const TEXTE = {
     won: "You won! 🎉", lost: "You lost. Answer: ",
     comeback: " (Come back tomorrow!)", copied: "Result copied! 📋",
     share: "Copy result", again: "Play again",
-    played: "Played", wins: "Wins", streak: "Streak", best: "Best",
+    played: "Played", winRate: "Win %", streak: "Streak", best: "Best",
+    stats: "Statistics", guesses: "Guesses", nextWord: "Next word in", langName: "English",
     shareTitle: "Wordle", langBtn: "DE",
     newDaily: "New daily puzzle available!",
     continueBtn: "Continue", newWordBtn: "New word",
@@ -66,6 +69,8 @@ let verlauf = [];
 let eingaben = [];
 let teilenText = "";
 let tagesDatum = "";           // Datum, zu dem das aktuelle Tagesspiel gehoert
+let statsOpenTimer = null;     // verzögertes Öffnen des Dialogs nach Spielende
+let countdownTimer = null;     // zählt im Dialog bis zum nächsten Tageswort herunter
 const felder = [];
 
 // --- kleine Helfer ---
@@ -146,8 +151,8 @@ function tastaturAufbauen() {
         knopf.textContent = "⌫";
         knopf.classList.add("taste-breit");
       } else if (taste === "Enter") {
-        knopf.textContent = "⏎";
-        knopf.classList.add("taste-breit");
+        knopf.textContent = "Enter";
+        knopf.classList.add("taste-breit", "taste-enter");
       } else {
         knopf.textContent = taste;
       }
@@ -188,18 +193,53 @@ function tasteEinfaerben(buchstabe, farbe) {
 // Eingabe
 // ------------------------------------------------------------
 function tastendruck(event) {
+  // Tastenkürzler wie Strg+R gehören dem Browser, gehaltene Tasten sollen nichts wiederholen.
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
+    return;
+  }
+  // Bei offenem Dialog darf nichts ins Spielfeld getippt werden.
+  const dialog = document.getElementById("stats-dialog");
+  if (dialog.open) {
+    return;
+  }
+  // Nach Esc kann der Fokus noch auf einem Knopf im geschlossenen Dialog liegen.
+  // Ohne das Lösen würde das nächste Enter ihn auslösen und zum Beispiel erneut kopieren.
+  if (dialog.contains(document.activeElement)) {
+    document.activeElement.blur();
+  } else if (event.key === "Enter" && event.target.tagName === "BUTTON") {
+    // Enter auf einem per Tab gewählten Knopf löst nur diesen Knopf aus, nicht zusätzlich das Raten.
+    return;
+  }
   verarbeiteTaste(event.key);
 }
 
+// Wackelt die aktuelle Zeile, damit eine Ablehnung auch ohne Lesen der Meldung auffällt.
+function shakeRow() {
+  for (const feld of felder[aktuelleZeile]) {
+    feld.classList.remove("wackeln");
+    void feld.offsetWidth;   // erzwingt einen Neustart der Animation bei schneller Wiederholung
+    feld.classList.add("wackeln");
+    feld.addEventListener("animationend", () => feld.classList.remove("wackeln"), { once: true });
+  }
+}
+
 function verarbeiteTaste(taste) {
-  if (spielVorbei) return;
+  if (spielVorbei) {
+    // Im Endlos-Modus reicht Enter für die nächste Runde, die Hand bleibt auf der Tastatur.
+    if (taste === "Enter" && modus === "endlos") {
+      neuesEndlosSpiel();
+    }
+    return;
+  }
 
   if (taste === "Enter") {
     const wort = zeileBuchstaben.join("");
     if (wort.length < WORTLAENGE) {
       document.getElementById("meldung").textContent = t("fill5");
+      shakeRow();
     } else if (!erlaubtListe().includes(wort)) {
       document.getElementById("meldung").textContent = t("notinlist");
+      shakeRow();
     } else {
       document.getElementById("meldung").textContent = "";
       zeileAuswerten();
@@ -298,41 +338,76 @@ function zeileAuswerten() {
 function spielBeenden(gewonnen) {
   spielVorbei = true;
   teilenText = baueTeilenText(gewonnen);
-  const stat = statistikAktualisieren(gewonnen);
-  statistikAnzeigen(stat);
+  statistikAktualisieren(gewonnen);
   spielSpeichern(gewonnen, true);
   if (modus === "taeglich") {
-    document.getElementById("teilen").hidden = false;
     document.getElementById("neustart").hidden = true;
     if (tagesDatum !== heuteText()) {
       // altes Tagesspiel beendet -> heutiges Wort anbieten
       tagesFrageZeigen(t("oldFinished"), t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
     }
   } else {
-    document.getElementById("teilen").hidden = true;
     document.getElementById("neustart").hidden = false;
   }
+  // Erst öffnen, wenn die letzte Zeile fertig aufgedeckt ist (5 Felder, zusammen ca. 1,3 s).
+  statsOpenTimer = setTimeout(openStats, STATS_OPEN_DELAY_MS);
 }
 
 // ------------------------------------------------------------
 // Statistik
 // ------------------------------------------------------------
+// Getrennt je Modus und Sprache, denn eine Streak aus Tagen und eine aus
+// Endlos-Runden lassen sich nicht sinnvoll zusammenzählen.
+function statsKey() {
+  return STAT_SCHLUESSEL + "-" + modus + "-" + sprache;
+}
+function emptyStats() {
+  return {
+    gespielt: 0, gewonnen: 0, streak: 0, maxStreak: 0,
+    distribution: [0, 0, 0, 0, 0, 0],   // Siege je Versuchsanzahl (Index 0 = im 1. Versuch)
+    lastWinDate: null,                  // nur Tagesmodus: Datum des letzten gewonnenen Rätsels
+  };
+}
 function statistikLaden() {
-  const roh = localStorage.getItem(STAT_SCHLUESSEL);
-  if (roh === null) {
-    return { gespielt: 0, gewonnen: 0, streak: 0, maxStreak: 0 };
+  const roh = localStorage.getItem(statsKey());
+  if (roh !== null) {
+    return JSON.parse(roh);
   }
-  return JSON.parse(roh);
+  const stat = emptyStats();
+  // Die alte Statistik mischte alle Modi und Sprachen und lässt sich nicht mehr aufteilen.
+  // Sie zählt deshalb als deutsches Tagesrätsel, der alte Eintrag bleibt unverändert liegen.
+  const old = localStorage.getItem(STAT_SCHLUESSEL);
+  if (old !== null && modus === "taeglich" && sprache === "de") {
+    const oldStat = JSON.parse(old);
+    stat.gespielt = oldStat.gespielt;
+    stat.gewonnen = oldStat.gewonnen;
+    stat.streak = oldStat.streak;
+    stat.maxStreak = oldStat.maxStreak;
+    // "Gestern gewonnen", damit eine laufende Streak beim nächsten Sieg weiterzählt.
+    stat.lastWinDate = yesterdayText();
+  }
+  return stat;
 }
 function statistikSpeichern(stat) {
-  localStorage.setItem(STAT_SCHLUESSEL, JSON.stringify(stat));
+  localStorage.setItem(statsKey(), JSON.stringify(stat));
 }
 function statistikAktualisieren(hatGewonnen) {
   const stat = statistikLaden();
   stat.gespielt = stat.gespielt + 1;
   if (hatGewonnen) {
     stat.gewonnen = stat.gewonnen + 1;
-    stat.streak = stat.streak + 1;
+    stat.distribution[eingaben.length - 1] = stat.distribution[eingaben.length - 1] + 1;
+    if (modus === "taeglich") {
+      // Tage zählen: Die Streak läuft nur weiter, wenn das Rätsel vom Vortag gewonnen wurde.
+      if (stat.lastWinDate !== null && dayNumber(tagesDatum) - dayNumber(stat.lastWinDate) === 1) {
+        stat.streak = stat.streak + 1;
+      } else {
+        stat.streak = 1;
+      }
+      stat.lastWinDate = tagesDatum;
+    } else {
+      stat.streak = stat.streak + 1;
+    }
     if (stat.streak > stat.maxStreak) {
       stat.maxStreak = stat.streak;
     }
@@ -340,18 +415,125 @@ function statistikAktualisieren(hatGewonnen) {
     stat.streak = 0;
   }
   statistikSpeichern(stat);
-  return stat;
 }
-function statistikAnzeigen(stat) {
-  let quote = 0;
-  if (stat.gespielt > 0) {
-    quote = Math.round((stat.gewonnen / stat.gespielt) * 100);
+// Gespeichert wird die Streak nur bei Spielende. Wurde seitdem ein Tag ausgelassen,
+// ist sie schon gerissen und muss beim Anzeigen als 0 erscheinen.
+function currentStreak(stat) {
+  if (modus !== "taeglich") {
+    return stat.streak;
   }
-  document.getElementById("statistik").textContent =
-    t("played") + ": " + stat.gespielt +
-    " · " + t("wins") + ": " + stat.gewonnen + " (" + quote + "%)" +
-    " · " + t("streak") + ": " + stat.streak +
-    " · " + t("best") + ": " + stat.maxStreak;
+  if (stat.lastWinDate === null) {
+    return 0;
+  }
+  if (dayNumber(heuteText()) - dayNumber(stat.lastWinDate) > 1) {
+    return 0;
+  }
+  return stat.streak;
+}
+
+function renderDistribution(stat) {
+  const box = document.getElementById("distribution");
+  box.innerHTML = "";
+  const highest = Math.max(1, Math.max(...stat.distribution));
+  // Den Balken des gerade gewonnenen Spiels hervorheben.
+  let currentRow = -1;
+  if (spielVorbei && eingaben[eingaben.length - 1] === ZIEL) {
+    currentRow = eingaben.length - 1;
+  }
+  for (let i = 0; i < MAX_VERSUCHE; i++) {
+    const row = document.createElement("div");
+    row.className = "verteilung-zeile";
+    const number = document.createElement("span");
+    number.className = "verteilung-nummer";
+    number.textContent = i + 1;
+    const track = document.createElement("div");
+    track.className = "verteilung-spur";
+    const bar = document.createElement("div");
+    bar.className = "verteilung-balken";
+    bar.textContent = stat.distribution[i];
+    bar.style.width = Math.round((stat.distribution[i] / highest) * 100) + "%";
+    if (i === currentRow) {
+      bar.classList.add("aktuell");
+    }
+    track.appendChild(bar);
+    row.appendChild(number);
+    row.appendChild(track);
+    box.appendChild(row);
+  }
+}
+
+function updateCountdown() {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const seconds = Math.floor((midnight - now) / 1000);
+  const parts = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const text = parts.map((n) => String(n).padStart(2, "0")).join(":");
+  document.getElementById("next-word").textContent = t("nextWord") + " " + text;
+}
+
+function renderStats() {
+  const stat = statistikLaden();
+  let rate = 0;
+  if (stat.gespielt > 0) {
+    rate = Math.round((stat.gewonnen / stat.gespielt) * 100);
+  }
+  document.getElementById("stats-title").textContent = t("stats");
+  let modeName;
+  if (modus === "taeglich") {
+    modeName = t("daily");
+  } else {
+    modeName = t("endless");
+  }
+  document.getElementById("stats-mode").textContent = modeName + " · " + t("langName");
+  document.getElementById("stat-played").textContent = stat.gespielt;
+  document.getElementById("label-played").textContent = t("played");
+  document.getElementById("stat-win-rate").textContent = rate;
+  document.getElementById("label-win-rate").textContent = t("winRate");
+  document.getElementById("stat-streak").textContent = currentStreak(stat);
+  document.getElementById("label-streak").textContent = t("streak");
+  document.getElementById("stat-best").textContent = stat.maxStreak;
+  document.getElementById("label-best").textContent = t("best");
+  document.getElementById("distribution-title").textContent = t("guesses");
+  renderDistribution(stat);
+
+  // Der große Knopf zeigt, was nach Spielende als Nächstes sinnvoll ist.
+  const action = document.getElementById("stats-action");
+  const nextWord = document.getElementById("next-word");
+  action.hidden = !spielVorbei;
+  nextWord.hidden = !(spielVorbei && modus === "taeglich");
+  if (modus === "taeglich") {
+    action.textContent = t("share");
+    action.onclick = ergebnisTeilen;
+  } else {
+    action.textContent = t("again");
+    action.onclick = neuesEndlosSpiel;
+  }
+}
+
+function openStats() {
+  const dialog = document.getElementById("stats-dialog");
+  if (dialog.open) {
+    return;
+  }
+  // Fokus vorher lösen: Sonst käme er beim Schließen auf den Knopf zurück
+  // und das nächste Enter würde den Dialog wieder öffnen, statt zu raten.
+  document.activeElement.blur();
+  renderStats();
+  dialog.showModal();
+  const action = document.getElementById("stats-action");
+  if (!action.hidden) {
+    action.focus();
+  }
+  if (spielVorbei && modus === "taeglich") {
+    updateCountdown();
+    countdownTimer = setInterval(updateCountdown, 1000);
+  }
+}
+function closeStats() {
+  const dialog = document.getElementById("stats-dialog");
+  if (dialog.open) {
+    dialog.close();
+  }
 }
 
 // ------------------------------------------------------------
@@ -400,8 +582,12 @@ function baueTeilenText(gewonnen) {
   return kopf + "\n" + zeilen.join("\n");
 }
 function ergebnisTeilen() {
-  navigator.clipboard.writeText(teilenText);
-  document.getElementById("meldung").textContent = t("copied");
+  const action = document.getElementById("stats-action");
+  // Rückmeldung am Knopf selbst, denn die Meldungszeile liegt hinter dem Dialog.
+  navigator.clipboard.writeText(teilenText).then(() => {
+    action.textContent = t("copied");
+    setTimeout(() => { action.textContent = t("share"); }, 2000);
+  });
 }
 
 // ------------------------------------------------------------
@@ -428,8 +614,8 @@ function spracheUmschalten() {
 function uiTexteSetzen() {
   document.getElementById("modus-taeglich").textContent = t("daily");
   document.getElementById("modus-endlos").textContent = t("endless");
-  document.getElementById("teilen").textContent = t("share");
   document.getElementById("neustart").textContent = t("again");
+  document.getElementById("stats-button").setAttribute("aria-label", t("stats"));
   let flagge;
   if (sprache === "de") {
     flagge = "icons/flag-de.svg";
@@ -490,6 +676,17 @@ function wortDesTages() {
     index = index + liste.length;
   }
   return liste[index];
+}
+function yesterdayText() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+// Macht aus "2026-11-5" eine fortlaufende Tageszahl, damit sich Tage einfach vergleichen lassen.
+function dayNumber(dateText) {
+  const parts = dateText.split("-");
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])) / msPerDay;
 }
 function verwendetSchluessel() {
   return "woerdle-verwendet-" + sprache;
@@ -574,11 +771,9 @@ function spielstandWiederherstellen(state) {
     teilenText = baueTeilenText(state.gewonnen);
     let zusatz = "";
     if (modus === "taeglich") {
-      document.getElementById("teilen").hidden = false;
       document.getElementById("neustart").hidden = true;
       zusatz = t("comeback");
     } else {
-      document.getElementById("teilen").hidden = true;
       document.getElementById("neustart").hidden = false;
     }
     if (state.gewonnen) {
@@ -602,9 +797,12 @@ function boardZuruecksetzen() {
   verlauf = [];
   eingaben = [];
 
+  // Beim Wechsel von Modus oder Sprache darf der Dialog des alten Spiels nicht mehr aufgehen.
+  clearTimeout(statsOpenTimer);
+  closeStats();
+
   document.getElementById("meldung").textContent = "";
   document.getElementById("neustart").hidden = true;
-  document.getElementById("teilen").hidden = true;
   document.getElementById("tages-frage").hidden = true;
 
   for (let zeile = 0; zeile < MAX_VERSUCHE; zeile++) {
@@ -666,7 +864,6 @@ function spielStarten() {
     }
   }
   console.log("Zielwort:", ZIEL);
-  statistikAnzeigen(statistikLaden());
 }
 
 // "Weiterspielen" im Endlos-Modus: alten Stand verwerfen, neues Wort
@@ -675,7 +872,6 @@ function neuesEndlosSpiel() {
   boardZuruecksetzen();
   ZIEL = naechstesZielwort();
   console.log("Zielwort:", ZIEL);
-  statistikAnzeigen(statistikLaden());
 }
 
 // --- Tagesrätsel-Frage: altes weiterspielen vs. neues Wort ---
@@ -689,7 +885,6 @@ function neuesTageswort() {
   tagesDatum = heuteText();
   console.log("Zielwort (heute):", ZIEL);
   spielSpeichern(false, false); // heutiges (leeres) Tagesspiel sichern, ersetzt das alte
-  statistikAnzeigen(statistikLaden());
 }
 // kleiner Knopf, um beim Weiterspielen jederzeit zum heutigen Wort zu wechseln
 function tagesFrageAltweiter() {
@@ -728,7 +923,24 @@ rasterAufbauen();
 tastaturAufbauen();
 document.addEventListener("keydown", tastendruck);
 document.getElementById("neustart").addEventListener("click", neuesEndlosSpiel);
-document.getElementById("teilen").addEventListener("click", ergebnisTeilen);
+document.getElementById("stats-button").addEventListener("click", openStats);
+document.getElementById("stats-close").addEventListener("click", closeStats);
+const statsDialog = document.getElementById("stats-dialog");
+// Ein Klick neben den Dialog trifft das dialog-Element selbst und schließt ihn.
+statsDialog.addEventListener("click", (event) => {
+  if (event.target === statsDialog) {
+    closeStats();
+  }
+});
+// Läuft bei jedem Schließen, auch per Esc-Taste.
+statsDialog.addEventListener("close", () => clearInterval(countdownTimer));
+// Maus-Klicks hinterlassen sonst den Fokus auf dem Knopf, und Enter würde ihn erneut auslösen.
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (button !== null && !statsDialog.open) {
+    button.blur();
+  }
+});
 document.getElementById("modus-taeglich").addEventListener("click", () => modusSetzen("taeglich"));
 document.getElementById("modus-endlos").addEventListener("click", () => modusSetzen("endlos"));
 document.getElementById("sprache").addEventListener("click", spracheUmschalten);
