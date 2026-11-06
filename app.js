@@ -9,8 +9,9 @@ const WORTLAENGE = 5;
 const MAX_VERSUCHE = 6;
 const STAT_SCHLUESSEL = "woerdle-statistik";
 const STATS_OPEN_DELAY_MS = 1600;
+const REVEAL_DONE_MS = 1300;  // 5 Felder, je 0,2 s versetzt, jedes dreht sich 0,5 s (siehe style.css)
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.9";   // bei jedem Release hochzaehlen
+const APP_VERSION = "2.10";   // bei jedem Release hochzaehlen
 
 // --- Texte je Sprache ---
 const TEXTE = {
@@ -28,6 +29,7 @@ const TEXTE = {
     continueBtn: "Weiterspielen", newWordBtn: "Neues Wort",
     todayWordBtn: "Heutiges Wort", oldFinished: "Altes Spiel beendet.",
     flagEmoji: "🇩🇪",
+    switchLanguage: "Sprache wechseln", close: "Schließen",
   },
   en: {
     daily: "Daily word", endless: "Endless",
@@ -43,6 +45,7 @@ const TEXTE = {
     continueBtn: "Continue", newWordBtn: "New word",
     todayWordBtn: "Today's word", oldFinished: "Old game finished.",
     flagEmoji: "🇬🇧",
+    switchLanguage: "Switch language", close: "Close",
   },
 };
 
@@ -73,6 +76,7 @@ let tagesDatum = "";           // Datum, zu dem das aktuelle Tagesspiel gehoert
 let statsOpenTimer = null;     // verzögertes Öffnen des Dialogs nach Spielende
 let countdownTimer = null;     // zählt im Dialog bis zum nächsten Tageswort herunter
 let shownDay = "";             // Tag, an dem das Spiel zuletzt gestartet wurde
+let revealTimers = [];         // warten aufs Aufdecken: Tastenfarben und Spielende-Anzeige
 const felder = [];
 
 // --- kleine Helfer ---
@@ -261,7 +265,9 @@ function verarbeiteTaste(taste) {
     return;
   }
 
-  if (/^[a-zA-ZäöüÄÖÜ]$/.test(taste)) {
+  // Erlaubt ist, was die Tastatur der Sprache zeigt. So lässt sich im Englischen kein Ä über
+  // eine echte Tastatur eingeben, das ohnehin in keinem englischen Wort vorkommen kann.
+  if (tastaturLayout().flat().includes(taste.toUpperCase())) {
     zeileBuchstaben[aktivesFeld] = taste.toUpperCase();
     // nach dem Tippen automatisch ein Feld weiter (bis zum letzten)
     if (aktivesFeld < WORTLAENGE - 1) {
@@ -313,9 +319,12 @@ function zeileAuswerten() {
     feld.style.animationDelay = (i * 0.2) + "s";
     feld.classList.add("aufgedeckt");
   }
-  for (let i = 0; i < WORTLAENGE; i++) {
-    tasteEinfaerben(wort[i], ergebnis[i]);
-  }
+  // Die Tasten erst nach dem Umdrehen färben, sonst verraten sie das Ergebnis vorab.
+  afterReveal(() => {
+    for (let i = 0; i < WORTLAENGE; i++) {
+      tasteEinfaerben(wort[i], ergebnis[i]);
+    }
+  });
 
   verlauf.push(ergebnis.slice());
   eingaben.push(wort);
@@ -326,10 +335,8 @@ function zeileAuswerten() {
   aktivesFeld = 0;
 
   if (gewonnen) {
-    document.getElementById("meldung").textContent = t("won");
     spielBeenden(true);
   } else if (aktuelleZeile >= MAX_VERSUCHE) {
-    document.getElementById("meldung").textContent = t("lost") + ZIEL;
     spielBeenden(false);
   } else {
     spielSpeichern(false, false);
@@ -337,11 +344,29 @@ function zeileAuswerten() {
   }
 }
 
+// Führt etwas aus, sobald die gerade geratene Zeile fertig umgedreht ist.
+function afterReveal(action) {
+  revealTimers.push(setTimeout(action, REVEAL_DONE_MS));
+}
+
 function spielBeenden(gewonnen) {
+  // Der Stand wird sofort gespeichert, damit ein Neuladen während des Umdrehens nichts verliert.
   spielVorbei = true;
   teilenText = baueTeilenText(gewonnen);
   statistikAktualisieren(gewonnen);
   spielSpeichern(gewonnen, true);
+  afterReveal(() => showGameEnd(gewonnen));
+  // Erst öffnen, wenn die letzte Zeile fertig aufgedeckt ist.
+  statsOpenTimer = setTimeout(openStats, STATS_OPEN_DELAY_MS);
+}
+
+// Meldung und Knöpfe kommen erst nach dem Umdrehen, sonst stünde das Ergebnis vor den Farben fest.
+function showGameEnd(gewonnen) {
+  if (gewonnen) {
+    document.getElementById("meldung").textContent = t("won");
+  } else {
+    document.getElementById("meldung").textContent = t("lost") + ZIEL;
+  }
   if (modus === "taeglich") {
     document.getElementById("neustart").hidden = true;
     if (tagesDatum !== heuteText()) {
@@ -351,8 +376,6 @@ function spielBeenden(gewonnen) {
   } else {
     document.getElementById("neustart").hidden = false;
   }
-  // Erst öffnen, wenn die letzte Zeile fertig aufgedeckt ist (5 Felder, zusammen ca. 1,3 s).
-  statsOpenTimer = setTimeout(openStats, STATS_OPEN_DELAY_MS);
 }
 
 // ------------------------------------------------------------
@@ -623,6 +646,10 @@ function spracheUmschalten() {
   spielStarten();
 }
 function uiTexteSetzen() {
+  // Vorlesehilfen und die Silbentrennung richten sich nach dieser Angabe.
+  document.documentElement.lang = sprache;
+  document.getElementById("sprache").setAttribute("aria-label", t("switchLanguage"));
+  document.getElementById("stats-close").setAttribute("aria-label", t("close"));
   document.getElementById("modus-taeglich").textContent = t("daily");
   document.getElementById("modus-endlos").textContent = t("endless");
   document.getElementById("neustart").textContent = t("again");
@@ -811,6 +838,11 @@ function boardZuruecksetzen() {
   // Beim Wechsel von Modus oder Sprache darf der Dialog des alten Spiels nicht mehr aufgehen.
   clearTimeout(statsOpenTimer);
   closeStats();
+  // Dasselbe gilt für alles, was noch aufs Umdrehen wartet: Es würde das neue Spiel einfärben.
+  for (const timer of revealTimers) {
+    clearTimeout(timer);
+  }
+  revealTimers = [];
 
   document.getElementById("meldung").textContent = "";
   document.getElementById("neustart").hidden = true;

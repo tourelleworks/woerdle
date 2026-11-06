@@ -40,8 +40,7 @@ unter der eigenen Domain ausliefert (und nicht unter einem Unterpfad).
 ├── manifest.json       # PWA-Manifest (Name, Icons, Startseite)
 ├── service-worker.js   # Offline-Cache und automatische Updates
 ├── icons/              # App-Icons, Flaggen, Katzen-Silhouette
-├── CNAME               # eigene Domain für GitHub Pages
-└── CLAUDE.md           # Projektkontext für Claude Code
+└── CNAME               # eigene Domain für GitHub Pages
 ```
 
 ## Lokal starten
@@ -64,5 +63,5 @@ bindet die eigene Domain `woerdle.tourelleworks.de`.
 
 Bei jedem Release hochzählen:
 
-- `APP_VERSION` in `app.js` – die sichtbare Versionsnummer unten in der Ecke.
+- `APP_VERSION` in `app.js` – die sichtbare Versionsnummer oben rechts.
 - `CACHE_VERSION` in `service-worker.js` – damit der Cache sicher erneuert wird.

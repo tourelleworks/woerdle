@@ -148,7 +148,13 @@ code {
   50%  { transform: scaleY(0); }
   100% { transform: scaleY(1); }
 }
-.feld.aufgedeckt { animation: aufdecken 0.5s ease; }
+/* Die Farbklasse sitzt schon beim Raten am Feld. Bis zur halben Drehung, wenn das Feld hochkant
+   steht und nichts zu sehen ist, überdeckt diese Animation sie mit dem Aussehen des ungeratenen
+   Felds. step-end hält den Startwert bis zum Schluss, "backwards" auch während der Wartezeit. */
+@keyframes aufdecken-farbe {
+  from { background-color: transparent; border-color: var(--rahmen-hell); }
+}
+.feld.aufgedeckt { animation: aufdecken 0.5s ease, aufdecken-farbe 0.25s step-end backwards; }
 
 /* Rückmeldung bei ungültigem Wort: Die Zeile wackelt kurz */
 @keyframes wackeln {
