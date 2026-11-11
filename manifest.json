@@ -1,6 +1,6 @@
 {
-  "name": "Wördle",
-  "short_name": "Wördle",
+  "name": "Wortsuchspiel",
+  "short_name": "Wortsuchspiel",
   "description": "Deutsches Wortratespiel – errate das Wort in 6 Versuchen.",
   "start_url": "index.html",
   "scope": ".",

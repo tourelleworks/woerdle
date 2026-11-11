@@ -11,7 +11,7 @@ const STAT_SCHLUESSEL = "woerdle-statistik";
 const STATS_OPEN_DELAY_MS = 1600;
 const REVEAL_DONE_MS = 1300;  // 5 Felder, je 0,2 s versetzt, jedes dreht sich 0,5 s (siehe style.css)
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.10";   // bei jedem Release hochzaehlen
+const APP_VERSION = "2.11";   // bei jedem Release hochzaehlen
 
 // --- Texte je Sprache ---
 const TEXTE = {
@@ -24,7 +24,7 @@ const TEXTE = {
     share: "Ergebnis kopieren", again: "Nochmal spielen",
     played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
     stats: "Statistik", guesses: "Versuche", nextWord: "Nächstes Wort in", langName: "Deutsch",
-    shareTitle: "Wördle", langBtn: "EN",
+    shareTitle: "Wortsuchspiel", langBtn: "EN",
     newDaily: "Neues Tagesrätsel verfügbar!",
     continueBtn: "Weiterspielen", newWordBtn: "Neues Wort",
     todayWordBtn: "Heutiges Wort", oldFinished: "Altes Spiel beendet.",

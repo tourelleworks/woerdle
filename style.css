@@ -419,3 +419,12 @@ body { touch-action: manipulation; }
     grid-row: 6;
   }
 }
+/* Der Name „Wortsuchspiel“ ist länger als „Wördle“: Auf schmalen Handys würde er sonst unter
+   die Knöpfe rechts oben laufen. Weniger Buchstabenabstand und etwas kleinere Schrift reichen. */
+@media (max-width: 480px) {
+  .app-header h1 {
+    letter-spacing: 1px;
+    font-size: 1.05rem;
+    gap: 6px;
+  }
+}
