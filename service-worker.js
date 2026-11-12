@@ -32,6 +32,11 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 self.addEventListener("fetch", (event) => {
+  // Fremde Adressen (etwa den Aufrufzähler auf tourelleworks.de) lädt der Browser selbst. Über den
+  // Service Worker liefe die Anfrage unter dessen strengeren Regeln und käme womöglich nie an.
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    return;
+  }
   event.respondWith(
     // "no-cache" fragt bei jeder Datei beim Server nach, ob sie noch aktuell ist. Ohne das nimmt
     // der Browser Dateien aus seinem HTTP-Cache, und nach einem Update kann eine alte index.html
