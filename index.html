@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/fehler.css">
 </head>
 <body>
 <header class="app-header">
@@ -58,6 +59,7 @@
 
   <footer class="app-footer">
     <span id="pwa-status">Web-Version</span>
+    <button type="button" class="twf-link" data-fehler-melden="1">Fehler melden</button>
   </footer>
 
   <!-- Statistik-Dialog: dialog bringt Fokus, Esc-Taste und abgedunkelten Hintergrund schon mit. -->
@@ -86,5 +88,6 @@
   <!-- Aufrufzähler von tourelleworks.de: zählt nur, wie oft die App geöffnet wird, ohne Cookie und ohne IP. -->
   <img src="https://tourelleworks.de/zaehler/woerdle.gif" alt="" width="1" height="1" hidden referrerpolicy="no-referrer">
   <script src="/zaehler.js" defer></script>
+  <script src="/fehler.js" data-app="woerdle" defer></script>
 </body>
 </html>
