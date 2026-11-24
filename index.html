@@ -19,6 +19,14 @@
 </head>
 <body>
 <header class="app-header">
+  <!-- Menü links wie im Original: Dort stehen „Fehler melden“ und die Versionsnummer, nicht auf dem Spielfeld. -->
+  <button id="menu-button" class="kopf-knopf menu-knopf" aria-label="Menü">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor">
+      <rect x="3" y="5" width="18" height="2.4" rx="1.2" />
+      <rect x="3" y="10.8" width="18" height="2.4" rx="1.2" />
+      <rect x="3" y="16.6" width="18" height="2.4" rx="1.2" />
+    </svg>
+  </button>
   <img src="icons/cat-silhouette.svg" alt="" class="katze-ecke" />
   <h1><img src="icons/icon-192.png" alt="Logo" class="logo" /> Wortsuchspiel</h1>
   <div class="kopf-knoepfe">
@@ -33,19 +41,14 @@
   </div>
 </header>
 
-  <!-- Eigene schmale Zeile unter der Kopfzeile: Über dem Spielfeld läge sie auf den Feldern, unten auf der Löschen-Taste. -->
-  <footer class="app-footer">
-    <span id="pwa-status">Web-Version</span>
-    <button type="button" class="twf-link" data-fehler-melden="1">Fehler melden</button>
-  </footer>
-
   <main>
     <!-- Das Raster (6 Zeilen x 5 Felder) wird per JavaScript gefüllt. -->
     <!-- Die Hülle gibt dem Raster die freie Höhe vor, siehe .raster-box in style.css. -->
     <div class="raster-box"><div id="raster" class="raster"></div></div>
 
-    <!-- Kurze Meldungen wie „Gewonnen!“ oder „Dieses Wort ist nicht in der Liste.“ (setzt app.js). -->
-    <p id="meldung" class="meldung"></p>
+    <!-- Kurze Einblendung oben über dem Spielfeld, wie im Original: „Nicht in der Liste“, das Lob
+         nach einem Sieg oder die Lösung nach einer Niederlage. Leer = unsichtbar (setzt app.js). -->
+    <p id="meldung" class="meldung" role="status"></p>
     <div id="tages-frage" class="tages-frage" hidden>
       <span id="tages-frage-text"></span>
       <button id="btn-tag-1" class="modus-knopf"></button>
@@ -64,6 +67,8 @@
       <button id="stats-close" class="stats-schliessen" aria-label="Schließen">×</button>
       <h2 id="stats-title"></h2>
       <p id="stats-mode" class="stats-modus"></p>
+      <!-- Nach einer Niederlage steht hier die Lösung, damit man sie auch später noch nachlesen kann. -->
+      <p id="stats-answer" class="stats-loesung" hidden></p>
       <div class="stats-kacheln">
         <div><strong id="stat-played"></strong><span id="label-played"></span></div>
         <div><strong id="stat-win-rate"></strong><span id="label-win-rate"></span></div>
@@ -74,6 +79,16 @@
       <div id="distribution"></div>
       <p id="next-word" class="naechstes-wort" hidden></p>
       <button id="stats-action" class="stats-aktion" hidden></button>
+    </div>
+  </dialog>
+
+  <!-- Menü: alles, was nicht zum Spielen gebraucht wird, aber erreichbar sein soll. -->
+  <dialog id="menu-dialog" class="stats-dialog" aria-labelledby="menu-title">
+    <div class="stats-inhalt">
+      <button id="menu-close" class="stats-schliessen" aria-label="Schließen">×</button>
+      <h2 id="menu-title">Menü</h2>
+      <button type="button" id="menu-report" class="menu-eintrag" data-fehler-melden="1">Fehler melden</button>
+      <p class="menu-fuss"><span id="pwa-status">Wortsuchspiel</span><br /><span id="puzzle-number"></span></p>
     </div>
   </dialog>
 

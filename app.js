@@ -8,10 +8,12 @@
 const WORTLAENGE = 5;
 const MAX_VERSUCHE = 6;
 const STAT_SCHLUESSEL = "woerdle-statistik";
-const STATS_OPEN_DELAY_MS = 1600;
 const REVEAL_DONE_MS = 1300;  // 5 Felder, je 0,2 s versetzt, jedes dreht sich 0,5 s (siehe style.css)
+const TOAST_MS = 1500;        // so lange bleibt eine Einblendung stehen
+// Die Statistik geht erst auf, wenn die letzte Zeile umgedreht ist und die Einblendung gelesen wurde.
+const STATS_OPEN_DELAY_MS = REVEAL_DONE_MS + TOAST_MS;
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.13";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
+const APP_VERSION = "2.14";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
 // Unter diesem Namen liegen Tagesspielstand und Tagesstatistik auf den Geräten. Er stammt aus der Zeit
 // mit zwei Modi und bleibt, damit vorhandene Spielstände und Statistiken weiter gefunden werden.
 const DAILY_KEY_PART = "taeglich";
@@ -21,8 +23,10 @@ const TEXTE = {
   de: {
     fill5: "Bitte alle 5 Felder ausfüllen.",
     notinlist: "Dieses Wort ist nicht in der Liste.",
-    won: "Gewonnen! 🎉", lost: "Verloren. Lösung: ",
-    comeback: " (Komm morgen wieder!)", copied: "Ergebnis kopiert! 📋", copyFailed: "Kopieren nicht möglich",
+    // Lob nach einem Sieg, je nach Zahl der Versuche (1 bis 6), wie im Original.
+    praise: ["Genial!", "Großartig!", "Beeindruckend!", "Prima!", "Gut gemacht!", "Puh!"],
+    answer: "Lösung: ",
+    copied: "Ergebnis kopiert! 📋", copyFailed: "Kopieren nicht möglich",
     share: "Ergebnis kopieren",
     played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
     stats: "Statistik", guesses: "Versuche", nextWord: "Nächstes Wort in", langName: "Deutsch",
@@ -32,12 +36,14 @@ const TEXTE = {
     todayWordBtn: "Heutiges Wort", oldFinished: "Altes Spiel beendet.",
     flagEmoji: "🇩🇪",
     switchLanguage: "Sprache wechseln", close: "Schließen",
+    menu: "Menü", reportBug: "Fehler melden", puzzle: "Rätsel Nr. ",
   },
   en: {
     fill5: "Please fill all 5 boxes.",
     notinlist: "This word is not in the list.",
-    won: "You won! 🎉", lost: "You lost. Answer: ",
-    comeback: " (Come back tomorrow!)", copied: "Result copied! 📋", copyFailed: "Could not copy",
+    praise: ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"],
+    answer: "Answer: ",
+    copied: "Result copied! 📋", copyFailed: "Could not copy",
     share: "Copy result",
     played: "Played", winRate: "Win %", streak: "Streak", best: "Best",
     stats: "Statistics", guesses: "Guesses", nextWord: "Next word in", langName: "English",
@@ -47,6 +53,7 @@ const TEXTE = {
     todayWordBtn: "Today's word", oldFinished: "Old game finished.",
     flagEmoji: "🇬🇧",
     switchLanguage: "Switch language", close: "Close",
+    menu: "Menu", reportBug: "Report a problem", puzzle: "Puzzle no. ",
   },
 };
 
@@ -77,6 +84,7 @@ let statsOpenTimer = null;     // verzögertes Öffnen des Dialogs nach Spielend
 let countdownTimer = null;     // zählt im Dialog bis zum nächsten Tageswort herunter
 let shownDay = "";             // Tag, an dem das Spiel zuletzt gestartet wurde
 let revealTimers = [];         // warten aufs Aufdecken: Tastenfarben und Spielende-Anzeige
+let toastTimer = null;         // blendet die aktuelle Einblendung wieder aus
 const felder = [];
 
 // --- kleine Helfer ---
@@ -99,6 +107,22 @@ function erlaubtListe() {
 function tastaturLayout() {
   if (sprache === "en") { return TASTATUR_EN; }
   return TASTATUR_DE;
+}
+// Ist gerade irgendein Fenster offen (Statistik, Menü, Fehler melden)? Dann gehören Tasten
+// und Tagwechsel nicht dem Spielfeld.
+function anyDialogOpen() {
+  return document.querySelector("dialog[open]") !== null;
+}
+
+// Kurze Einblendung oben über dem Spielfeld. Sie verschwindet nach TOAST_MS von selbst.
+function showToast(text) {
+  clearTimeout(toastTimer);
+  document.getElementById("meldung").textContent = text;
+  toastTimer = setTimeout(hideToast, TOAST_MS);
+}
+function hideToast() {
+  clearTimeout(toastTimer);
+  document.getElementById("meldung").textContent = "";
 }
 
 // ------------------------------------------------------------
@@ -205,11 +229,11 @@ function tastendruck(event) {
   if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
     return;
   }
-  // Bei offenem Dialog darf nichts ins Spielfeld getippt werden.
-  const dialog = document.getElementById("stats-dialog");
-  if (dialog.open) {
+  // Bei offenem Fenster darf nichts ins Spielfeld getippt werden.
+  if (anyDialogOpen()) {
     return;
   }
+  const dialog = document.getElementById("stats-dialog");
   // Nach Esc kann der Fokus noch auf einem Knopf im geschlossenen Dialog liegen.
   // Ohne das Lösen würde das nächste Enter ihn auslösen und zum Beispiel erneut kopieren.
   if (dialog.contains(document.activeElement)) {
@@ -240,13 +264,13 @@ function verarbeiteTaste(taste) {
   if (taste === "Enter") {
     const wort = zeileBuchstaben.join("");
     if (wort.length < WORTLAENGE) {
-      document.getElementById("meldung").textContent = t("fill5");
+      showToast(t("fill5"));
       shakeRow();
     } else if (!erlaubtListe().includes(wort)) {
-      document.getElementById("meldung").textContent = t("notinlist");
+      showToast(t("notinlist"));
       shakeRow();
     } else {
-      document.getElementById("meldung").textContent = "";
+      hideToast();
       zeileAuswerten();
     }
     return;
@@ -259,7 +283,7 @@ function verarbeiteTaste(taste) {
       aktivesFeld = aktivesFeld - 1;
       zeileBuchstaben[aktivesFeld] = "";
     }
-    document.getElementById("meldung").textContent = "";
+    hideToast();
     eingabeAnzeigen();
     return;
   }
@@ -273,7 +297,7 @@ function verarbeiteTaste(taste) {
     if (aktivesFeld < WORTLAENGE - 1) {
       aktivesFeld = aktivesFeld + 1;
     }
-    document.getElementById("meldung").textContent = "";
+    hideToast();
     eingabeAnzeigen();
   }
 }
@@ -339,25 +363,18 @@ function spielBeenden(gewonnen) {
   statsOpenTimer = setTimeout(openStats, STATS_OPEN_DELAY_MS);
 }
 
-// Die Meldung am Spielende entsteht nur hier, direkt nach dem Raten und beim Wiederherstellen
-// gleichermaßen. Früher gab es zwei Stellen, und nur eine kannte „Komm morgen wieder!“.
-function gameEndMessage(gewonnen) {
-  let text;
+// Wie im Original: Nach einem Sieg ein kurzes Lob, das von der Zahl der Versuche abhängt,
+// nach einer Niederlage nur die Lösung. Wann das nächste Wort kommt, zeigt danach die Statistik.
+function gameEndToast(gewonnen) {
   if (gewonnen) {
-    text = t("won");
-  } else {
-    text = t("lost") + ZIEL;
+    return t("praise")[eingaben.length - 1];
   }
-  // Nur beim heutigen Rätsel: Bei einem nachgeholten von gestern wartet das heutige schon.
-  if (tagesDatum === heuteText()) {
-    text = text + t("comeback");
-  }
-  return text;
+  return ZIEL;
 }
 
-// Meldung und Knöpfe kommen erst nach dem Umdrehen, sonst stünde das Ergebnis vor den Farben fest.
+// Einblendung und Knöpfe kommen erst nach dem Umdrehen, sonst stünde das Ergebnis vor den Farben fest.
 function showGameEnd(gewonnen) {
-  document.getElementById("meldung").textContent = gameEndMessage(gewonnen);
+  showToast(gameEndToast(gewonnen));
   if (tagesDatum !== heuteText()) {
     // altes Tagesspiel beendet -> heutiges Wort anbieten
     tagesFrageZeigen(t("oldFinished"), t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
@@ -483,6 +500,11 @@ function renderStats() {
   document.getElementById("stats-title").textContent = t("stats");
   // Die Statistik gilt je Sprache, darum steht sie unter dem Titel.
   document.getElementById("stats-mode").textContent = t("langName");
+  // Nach einer Niederlage bleibt die Lösung hier nachlesbar, die Einblendung ist ja gleich wieder weg.
+  const answer = document.getElementById("stats-answer");
+  const lost = spielVorbei && eingaben[eingaben.length - 1] !== ZIEL;
+  answer.hidden = !lost;
+  answer.textContent = t("answer") + ZIEL;
   document.getElementById("stat-played").textContent = stat.gespielt;
   document.getElementById("label-played").textContent = t("played");
   document.getElementById("stat-win-rate").textContent = rate;
@@ -524,6 +546,25 @@ function openStats() {
 }
 function closeStats() {
   const dialog = document.getElementById("stats-dialog");
+  if (dialog.open) {
+    dialog.close();
+  }
+}
+
+// ------------------------------------------------------------
+// Menü
+// ------------------------------------------------------------
+function openMenu() {
+  const dialog = document.getElementById("menu-dialog");
+  if (dialog.open) {
+    return;
+  }
+  document.activeElement.blur();
+  document.getElementById("puzzle-number").textContent = t("puzzle") + puzzleNumber();
+  dialog.showModal();
+}
+function closeMenu() {
+  const dialog = document.getElementById("menu-dialog");
   if (dialog.open) {
     dialog.close();
   }
@@ -628,6 +669,10 @@ function uiTexteSetzen() {
   document.getElementById("sprache").setAttribute("aria-label", t("switchLanguage"));
   document.getElementById("stats-close").setAttribute("aria-label", t("close"));
   document.getElementById("stats-button").setAttribute("aria-label", t("stats"));
+  document.getElementById("menu-button").setAttribute("aria-label", t("menu"));
+  document.getElementById("menu-close").setAttribute("aria-label", t("close"));
+  document.getElementById("menu-title").textContent = t("menu");
+  document.getElementById("menu-report").textContent = t("reportBug");
   let flagge;
   if (sprache === "de") {
     flagge = "icons/flag-de.svg";
@@ -644,8 +689,8 @@ function heuteText() {
   const d = new Date();
   return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
 }
-function wortDesTages() {
-  const liste = zielListe();
+// Tage seit dem 1. Januar 2026, dem ersten Tag der Wortliste.
+function daysSinceStart() {
   const jetzt = new Date();
   // Über Date.UTC zählen, weil lokale Zeiten bei der Sommerzeit eine Stunde
   // verrutschen: Das neue Wort kam sonst im Sommer erst um 1 Uhr, und zwischen
@@ -653,8 +698,15 @@ function wortDesTages() {
   const start = Date.UTC(2026, 0, 1);
   const heute = Date.UTC(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate());
   const einTag = 1000 * 60 * 60 * 24;
-  const tage = Math.floor((heute - start) / einTag);
-  let index = tage % liste.length;
+  return Math.floor((heute - start) / einTag);
+}
+// Fortlaufende Nummer des heutigen Rätsels (1. Januar 2026 = Nr. 1), wie im Original im Menü.
+function puzzleNumber() {
+  return daysSinceStart() + 1;
+}
+function wortDesTages() {
+  const liste = zielListe();
+  let index = daysSinceStart() % liste.length;
   if (index < 0) {
     index = index + liste.length;
   }
@@ -715,10 +767,10 @@ function spielstandWiederherstellen(state) {
   zeileBuchstaben = emptyRow();
   aktivesFeld = 0;
 
+  // Ein fertiges Spiel zeigt nur das Raster; Ergebnis und Countdown stehen in der Statistik.
   if (state.beendet) {
     spielVorbei = true;
     teilenText = baueTeilenText(state.gewonnen);
-    document.getElementById("meldung").textContent = gameEndMessage(state.gewonnen);
   } else {
     eingabeAnzeigen();
   }
@@ -744,7 +796,7 @@ function boardZuruecksetzen() {
   }
   revealTimers = [];
 
-  document.getElementById("meldung").textContent = "";
+  hideToast();
   document.getElementById("tages-frage").hidden = true;
 
   for (let zeile = 0; zeile < MAX_VERSUCHE; zeile++) {
@@ -808,8 +860,8 @@ function checkForNewDay() {
   if (today === shownDay) {
     return;
   }
-  // Einen offenen Dialog nicht wegziehen, beim Schließen wird erneut geprüft.
-  if (document.getElementById("stats-dialog").open) {
+  // Ein offenes Fenster nicht wegziehen, beim Schließen wird erneut geprüft.
+  if (anyDialogOpen()) {
     return;
   }
   shownDay = today;
@@ -881,10 +933,23 @@ statsDialog.addEventListener("close", () => {
   clearInterval(countdownTimer);
   checkForNewDay();
 });
+// Menü: Knopf links oben, schließen mit ×, Esc oder einem Klick daneben.
+const menuDialog = document.getElementById("menu-dialog");
+document.getElementById("menu-button").addEventListener("click", openMenu);
+document.getElementById("menu-close").addEventListener("click", closeMenu);
+menuDialog.addEventListener("click", (event) => {
+  if (event.target === menuDialog) {
+    closeMenu();
+  }
+});
+menuDialog.addEventListener("close", checkForNewDay);
+// „Fehler melden“ öffnet fehler.js selbst (es lauscht auf data-fehler-melden); das Menü geht dabei zu,
+// damit nach dem Melden wieder das Spiel zu sehen ist.
+document.getElementById("menu-report").addEventListener("click", closeMenu);
 // Maus-Klicks hinterlassen sonst den Fokus auf dem Knopf, und Enter würde ihn erneut auslösen.
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
-  if (button !== null && !statsDialog.open) {
+  if (button !== null && !anyDialogOpen()) {
     button.blur();
   }
 });
@@ -896,7 +961,11 @@ window.addEventListener("pageshow", checkForNewDay);
 setInterval(checkForNewDay, NEW_DAY_CHECK_MS);
 uiTexteSetzen();
 spielStarten();
-document.getElementById("pwa-status").textContent = "v" + APP_VERSION;
+// Wie im Original: Wer das heutige Rätsel schon gelöst hat und wiederkommt, sieht gleich die Statistik.
+if (spielVorbei && tagesDatum === heuteText()) {
+  openStats();
+}
+document.getElementById("pwa-status").textContent = "Wortsuchspiel v" + APP_VERSION;
 
 // ------------------------------------------------------------
 // PWA
@@ -907,7 +976,7 @@ if ("serviceWorker" in navigator) {
       .register("service-worker.js")
       .then(() => {
         // Das Häkchen zeigt: Der Offline-Speicher ist eingerichtet, das Spiel geht auch ohne Netz.
-        document.getElementById("pwa-status").textContent = "v" + APP_VERSION + " ✓";
+        document.getElementById("pwa-status").textContent = "Wortsuchspiel v" + APP_VERSION + " ✓";
       })
       .catch((err) => console.error("Service Worker Fehler:", err));
   });

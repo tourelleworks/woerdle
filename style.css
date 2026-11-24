@@ -66,11 +66,25 @@ main {
 .feld.gelb  { background: var(--gelb);  border-color: var(--gelb); }
 .feld.grau  { background: var(--grau);  border-color: var(--grau); }
 
+/* Einblendung wie im Original: weißes Schild oben über dem Spielfeld. Sie liegt über allem und
+   nimmt keinen Platz weg, darum muss nichts nachrücken, wenn sie kommt oder geht. */
 .meldung {
-  min-height: 1.4em;
-  font-weight: 600;
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #fff;
+  color: #121213;
+  font-weight: 700;
   text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
 }
+.meldung:empty { display: none; }
 
 .hint {
   max-width: 360px;
@@ -83,13 +97,6 @@ code {
   background: rgba(255,255,255,0.1);
   padding: 1px 6px;
   border-radius: 6px;
-}
-
-.app-footer {
-  text-align: center;
-  padding: 12px;
-  color: #6b7280;
-  font-size: 0.8rem;
 }
 
 /* Auf kleinen Handys die Felder etwas verkleinern */
@@ -184,26 +191,7 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 .hint { display: none; }
 #tastatur { margin-top: 6px; }
 .taste { height: clamp(38px, 6.5vh, 48px); }
-/* Version und „Fehler melden“ in einer eigenen Zeile rechts unter der Kopfzeile. Früher lag die
-   Version fest darüber und durfte Klicks durchlassen; seit der Knopf dazukam, überdeckte die Zeile
-   am Handy den Modus-Knopf und schluckte den Tipp auf „Fehler melden“. Im Fluss nimmt sie Platz
-   ein, statt etwas zu überdecken. */
-.app-footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: 0 10px;
-  margin: 0;
-  font-size: 0.62rem;
-  line-height: 16px;
-  color: #6b7280;
-}
-/* Etwas Luft über und unter dem Link, damit er sich mit dem Finger treffen lässt. */
-.app-footer .twf-link { padding: 3px 0; }
 .raster { margin-bottom: 2px; }
-.meldung { min-height: 1.2em; margin: 0; }
 /* margin-top auto schiebt die Tastatur an den unteren Rand, so bleibt sie immer an derselben Stelle */
 #tastatur { margin-top: auto; }
 
@@ -264,11 +252,19 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
   border-radius: 3px;
 }
 
-/* Weiße Katzen-Silhouette, links oben auf Höhe der Flagge */
+/* Menü-Knopf ganz links, wie im Original */
+.menu-knopf {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+}
+
+/* Weiße Katzen-Silhouette, links oben neben dem Menü-Knopf auf Höhe der Flagge */
 .katze-ecke {
   position: absolute;
   top: 50%;
-  left: 12px;
+  left: 42px;
   transform: translateY(-50%);
   height: 24px;
   width: auto;
@@ -277,7 +273,7 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 
 /* Doppeltipp-Zoom auf dem Handy verhindern */
 body { touch-action: manipulation; }
-.taste, .feld, .modus-knopf, .sprache-knopf, .kopf-knopf, .stats-aktion, .stats-schliessen {
+.taste, .feld, .modus-knopf, .sprache-knopf, .kopf-knopf, .stats-aktion, .stats-schliessen, .menu-eintrag {
   touch-action: manipulation;
 }
 
@@ -321,6 +317,25 @@ body { touch-action: manipulation; }
 .stats-inhalt h2 { margin: 0; font-size: 1.1rem; text-align: center; }
 .stats-inhalt h3 { margin: 16px 0 6px; font-size: 0.9rem; text-align: center; }
 .stats-modus { margin: 2px 0 14px; color: #a1a1aa; font-size: 0.8rem; text-align: center; }
+.stats-loesung { margin: -6px 0 14px; font-weight: 700; letter-spacing: 1px; text-align: center; }
+.stats-loesung[hidden] { display: none; }
+
+/* Menü: Einträge als volle Zeilen, Version und Rätsel-Nummer klein darunter */
+.menu-eintrag {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 4px;
+  border: none;
+  border-top: 1px solid var(--rahmen);
+  border-bottom: 1px solid var(--rahmen);
+  background: transparent;
+  color: var(--text);
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-fuss { margin: 20px 0 0; color: #a1a1aa; font-size: 0.75rem; line-height: 1.5; text-align: center; }
 .stats-kacheln {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -400,9 +415,8 @@ body { touch-action: manipulation; }
     width: auto;
     container-type: normal;
   }
-  /* Hier zählt die Fensterhöhe: 114px = Kopfzeile 46px + Versionszeile 22px + Innenabstand 16px
-     + 5 Abstände à 6px. */
-  .raster { --cell: min(58px, calc((100dvh - 114px) / 6)); }
+  /* Hier zählt die Fensterhöhe: 92px = Kopfzeile 46px + Innenabstand 16px + 5 Abstände à 6px. */
+  .raster { --cell: min(58px, calc((100dvh - 92px) / 6)); }
   .meldung, .tages-frage {
     grid-column: 2;
     justify-self: center;
@@ -421,12 +435,13 @@ body { touch-action: manipulation; }
     gap: 6px;
   }
 }
-/* Ganz schmale Handys (z. B. 320 px): Dort stieß der Name noch an das Statistik-Symbol. Der Titel
-   rückt deshalb etwas nach links, wo neben der Katze Platz ist, und wird noch etwas kleiner. */
+/* Ganz schmale Handys (z. B. 320 px): Links Menü und Katze, rechts Statistik und Flagge lassen
+   dem Namen wenig Platz. Die Katze ist nur Schmuck und tritt dort zurück, der Name wird kleiner. */
 @media (max-width: 360px) {
+  .katze-ecke { display: none; }
   .app-header h1 {
-    letter-spacing: 0.5px;
-    font-size: 0.95rem;
-    padding-right: 48px;
+    letter-spacing: 0;
+    font-size: 0.9rem;
+    gap: 5px;
   }
 }
