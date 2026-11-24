@@ -13,7 +13,7 @@ const TOAST_MS = 1500;        // so lange bleibt eine Einblendung stehen
 // Die Statistik geht erst auf, wenn die letzte Zeile umgedreht ist und die Einblendung gelesen wurde.
 const STATS_OPEN_DELAY_MS = REVEAL_DONE_MS + TOAST_MS;
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.17";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
+const APP_VERSION = "2.18";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
 // Unter diesem Namen liegen Tagesspielstand und Tagesstatistik auf den Geräten. Er stammt aus der Zeit
 // mit zwei Modi und bleibt, damit vorhandene Spielstände und Statistiken weiter gefunden werden.
 const DAILY_KEY_PART = "taeglich";

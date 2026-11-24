@@ -435,6 +435,10 @@ body { touch-action: manipulation; }
     grid-template-columns: repeat(5, var(--cell));
     grid-auto-rows: var(--cell);
     margin-bottom: 0;
+    /* Genau mittig wirkte das Raster etwas zu tief. Es rückt bis zu 24px nach oben, aber nur
+       so weit, wie über ihm Platz frei ist (die Hälfte des Rests neben 6 Feldern + 5 Abständen).
+       So werden die Felder auf kleinen Handys dafür nicht kleiner. */
+    transform: translateY(calc(-1 * min(24px, (100cqh - 6 * var(--cell) - 30px) / 2)));
   }
   .feld { font-size: calc(var(--cell) * 0.55); }
 }
@@ -456,7 +460,8 @@ body { touch-action: manipulation; }
     container-type: normal;
   }
   /* Hier zählt die Fensterhöhe: 100px = Kopfzeile 54px + Innenabstand 16px + 5 Abstände à 6px. */
-  .raster { --cell: min(62px, calc((100dvh - 100px) / 6)); }
+  /* Im Querformat steht das Raster ohnehin oben, das Hochrücken aus dem Hochformat entfällt. */
+  .raster { --cell: min(62px, calc((100dvh - 100px) / 6)); transform: none; }
   .meldung, .tages-frage {
     grid-column: 2;
     justify-self: center;
