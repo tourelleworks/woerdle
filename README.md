@@ -14,12 +14,10 @@ Ein Wortratespiel auf Deutsch und Englisch: Errate das 5-Buchstaben-Wort in
 - **Zwei Sprachen** – Deutsch und Englisch, umschaltbar über den Flaggen-Knopf
   oben rechts (eigene Wortlisten und eigene Tastatur je Sprache).
 - **Tagesrätsel** – jeden Tag ein Wort, das für alle Spieler gleich ist.
-- **Endlos-Modus** – beliebig viele Runden; jedes Zielwort kommt einmal dran,
-  bevor sich eines wiederholt.
-- **Spielstände bleiben erhalten** – Tages- und Endlos-Spiel werden je Sprache
-  gespeichert und beim nächsten Start wiederhergestellt.
+- **Spielstand bleibt erhalten** – das Tagesrätsel wird je Sprache gespeichert
+  und beim nächsten Start wiederhergestellt.
 - **Statistik** – gespielte Spiele, Siegquote, Streak und Verteilung der Versuche,
-  getrennt je Modus und Sprache.
+  getrennt je Sprache.
 - **Ergebnis teilen** – Emoji-Raster mit Datum und Sprach-Flagge in die
   Zwischenablage kopieren.
 - **PWA** – auf dem Handy installierbar, offline spielbar, aktualisiert sich
