@@ -357,13 +357,25 @@ function spielBeenden(gewonnen) {
   statsOpenTimer = setTimeout(openStats, STATS_OPEN_DELAY_MS);
 }
 
+// Die Meldung am Spielende entsteht nur hier, direkt nach dem Raten und beim Wiederherstellen
+// gleichermaßen. Früher gab es zwei Stellen, und nur eine kannte „Komm morgen wieder!“.
+function gameEndMessage(gewonnen) {
+  let text;
+  if (gewonnen) {
+    text = t("won");
+  } else {
+    text = t("lost") + ZIEL;
+  }
+  // Nur beim heutigen Rätsel: Bei einem nachgeholten von gestern wartet das heutige schon.
+  if (tagesDatum === heuteText()) {
+    text = text + t("comeback");
+  }
+  return text;
+}
+
 // Meldung und Knöpfe kommen erst nach dem Umdrehen, sonst stünde das Ergebnis vor den Farben fest.
 function showGameEnd(gewonnen) {
-  if (gewonnen) {
-    document.getElementById("meldung").textContent = t("won");
-  } else {
-    document.getElementById("meldung").textContent = t("lost") + ZIEL;
-  }
+  document.getElementById("meldung").textContent = gameEndMessage(gewonnen);
   if (tagesDatum !== heuteText()) {
     // altes Tagesspiel beendet -> heutiges Wort anbieten
     tagesFrageZeigen(t("oldFinished"), t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
@@ -724,12 +736,7 @@ function spielstandWiederherstellen(state) {
   if (state.beendet) {
     spielVorbei = true;
     teilenText = baueTeilenText(state.gewonnen);
-    const zusatz = t("comeback");
-    if (state.gewonnen) {
-      document.getElementById("meldung").textContent = t("won") + zusatz;
-    } else {
-      document.getElementById("meldung").textContent = t("lost") + ZIEL + zusatz;
-    }
+    document.getElementById("meldung").textContent = gameEndMessage(state.gewonnen);
   } else {
     eingabeAnzeigen();
   }
