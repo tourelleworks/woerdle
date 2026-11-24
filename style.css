@@ -70,7 +70,7 @@ main {
    nimmt keinen Platz weg, darum muss nichts nachrücken, wenn sie kommt oder geht. */
 .meldung {
   position: fixed;
-  top: 58px;
+  top: 66px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -179,8 +179,10 @@ code {
 /* Alles ohne Scrollen auf den Schirm bringen */
 html, body { height: 100%; }
 body { height: 100dvh; overflow: hidden; }
-.app-header { padding: 8px; }
+/* Etwas mehr Luft und etwas größere Knöpfe als ganz knapp: Die Kopfzeile soll nicht gedrängt wirken. */
+.app-header { padding: 12px 8px; }
 .app-header h1 { font-size: 1.3rem; }
+.kopf-knopf svg { width: 25px; height: 25px; }
 main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 .raster {
   grid-template-columns: repeat(5, min(58px, 14vw));
@@ -245,8 +247,8 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
   line-height: 0;
 }
 .sprache-knopf img {
-  width: 30px;
-  height: 20px;
+  width: 33px;
+  height: 22px;
   display: block;
   object-fit: cover;
   border-radius: 3px;
@@ -418,7 +420,7 @@ body { touch-action: manipulation; }
     container-type: size;
   }
   /* 100cqw und 100cqh sind Breite und Höhe, die die Hülle tatsächlich bekommen hat. Die Felder
-     werden bis 62px groß (Original: Raster höchstens etwa 350px breit) und kleiner, wenn Breite
+     werden bis 62px groß (Raster wie im Original etwa 330px breit) und kleiner, wenn Breite
      (5 Felder + 4 Abstände à 6px) oder Höhe (6 Felder + 5 Abstände) nicht reichen. */
   .raster {
     --cell: min(62px, calc((100cqw - 24px) / 5), calc((100cqh - 30px) / 6));
@@ -445,8 +447,8 @@ body { touch-action: manipulation; }
     width: auto;
     container-type: normal;
   }
-  /* Hier zählt die Fensterhöhe: 92px = Kopfzeile 46px + Innenabstand 16px + 5 Abstände à 6px. */
-  .raster { --cell: min(62px, calc((100dvh - 92px) / 6)); }
+  /* Hier zählt die Fensterhöhe: 100px = Kopfzeile 54px + Innenabstand 16px + 5 Abstände à 6px. */
+  .raster { --cell: min(62px, calc((100dvh - 100px) / 6)); }
   .meldung, .tages-frage {
     grid-column: 2;
     justify-self: center;
@@ -460,14 +462,15 @@ body { touch-action: manipulation; }
    die Knöpfe rechts oben laufen. Weniger Buchstabenabstand und etwas kleinere Schrift reichen. */
 @media (max-width: 480px) {
   .app-header h1 {
-    letter-spacing: 1px;
-    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    font-size: 1.1rem;
     gap: 6px;
   }
 }
 /* Ganz schmale Handys (z. B. 320 px): Je zwei Knöpfe links und rechts lassen dem Namen wenig
-   Platz, darum wird er noch etwas kleiner. */
+   Platz, darum fällt das kleine Logo weg und der Name wird noch etwas kleiner. */
 @media (max-width: 360px) {
+  .logo { display: none; }
   .app-header h1 {
     letter-spacing: 0;
     font-size: 0.9rem;
