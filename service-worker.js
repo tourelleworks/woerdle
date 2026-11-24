@@ -8,6 +8,7 @@ const DATEIEN = [
   "index.html",
   "style.css",
   "app.js",
+  "evaluate.js",
   "woerter.js",
   "woerter-en.js",
   "manifest.json",
