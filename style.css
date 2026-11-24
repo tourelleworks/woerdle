@@ -420,10 +420,15 @@ body { touch-action: manipulation; }
     container-type: size;
   }
   /* 100cqw und 100cqh sind Breite und Höhe, die die Hülle tatsächlich bekommen hat. Die Felder
-     werden bis 62px groß (Raster wie im Original etwa 330px breit) und kleiner, wenn Breite
-     (5 Felder + 4 Abstände à 6px) oder Höhe (6 Felder + 5 Abstände) nicht reichen. */
+     werden bis --cell-max groß und kleiner, wenn Breite (5 Felder + 4 Abstände à 6px) oder
+     Höhe (6 Felder + 5 Abstände) nicht reichen. Am PC 62px (Raster etwa 330px breit wie im
+     Original), am Handy 56px: 62px wirkten dort zu wuchtig, die ersten Versionen hatten 52px. */
+  :root { --cell-max: 62px; }
+  @media (max-width: 480px) {
+    :root { --cell-max: 56px; }
+  }
   .raster {
-    --cell: min(62px, calc((100cqw - 24px) / 5), calc((100cqh - 30px) / 6));
+    --cell: min(var(--cell-max), calc((100cqw - 24px) / 5), calc((100cqh - 30px) / 6));
     grid-template-columns: repeat(5, var(--cell));
     grid-auto-rows: var(--cell);
     margin-bottom: 0;
