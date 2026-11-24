@@ -1,5 +1,6 @@
-// Englische Wortlisten fuer Woerdle.
-// ERLAUBTE_EN aus dem en_US-Woerterbuch (nur Kleinschreibung, ohne Eigennamen).
+// Englische Wortlisten für das Wortsuchspiel.
+// ERLAUBTE_EN aus dem en_US-Wörterbuch (nur Kleinschreibung, ohne Eigennamen).
+// Wie im Original ist keine Mehrzahl die Lösung; geraten werden darf sie trotzdem.
 
 // Reihenfolge ist absichtlich gemischt: Sie legt die Tageswörter fest (Tag 1 = erstes Wort).
 // Die ersten 73 Wörter sind die alte Liste. Sie liegen vorn, weil diese Tage schon
@@ -24,7 +25,7 @@ const ZIELWOERTER_EN = [
   "SCREW", "PRIDE", "CIVIL", "TACIT", "GUIDE", "MIRTH", "POWER", "LOCAL", "SMART", "MANOR",
   "CANOE", "TUTOR", "DONOR", "GREED", "HEARD", "SCRAP", "LATTE", "VAULT", "ALIEN", "FUDGE",
   "BLAZE", "CRAZY", "MOVIE", "FINAL", "UPSET", "GRIND", "GREET", "TUNER", "NICHE", "STAMP",
-  "TIGHT", "THEME", "LOOSE", "WHILE", "PLUMP", "HYENA", "ANGER", "CACTI", "DEALT", "TRUNK",
+  "TIGHT", "THEME", "LOOSE", "WHILE", "PLUMP", "HYENA", "ANGER", "COBRA", "DEALT", "TRUNK",
   "GROSS", "KIOSK", "LEVEL", "VIVID", "CYCLE", "LADLE", "SPELL", "WHICH", "QUITE", "NAIVE",
   "GLIDE", "RIGHT", "CURLY", "AWARD", "SLEEP", "WIDTH", "BROOK", "EBONY", "STEER", "ONSET",
   "BEING", "OZONE", "SONIC", "PUREE", "MONTH", "STEAM", "BUYER", "KNOCK", "START", "MAMBO",
