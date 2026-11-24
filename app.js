@@ -26,6 +26,7 @@ const TEXTE = {
     // Lob nach einem Sieg, je nach Zahl der Versuche (1 bis 6), wie im Original.
     praise: ["Genial!", "Großartig!", "Beeindruckend!", "Prima!", "Gut gemacht!", "Puh!"],
     answer: "Lösung: ",
+    greetingWon: "Herzlichen Glückwunsch! 🎉", greetingLost: "Danke fürs Spielen!",
     copied: "Ergebnis kopiert! 📋", copyFailed: "Kopieren nicht möglich",
     share: "Ergebnis kopieren",
     played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
@@ -57,6 +58,7 @@ const TEXTE = {
     notinlist: "This word is not in the list.",
     praise: ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"],
     answer: "Answer: ",
+    greetingWon: "Congratulations! 🎉", greetingLost: "Thanks for playing today!",
     copied: "Result copied! 📋", copyFailed: "Could not copy",
     share: "Copy result",
     played: "Played", winRate: "Win %", streak: "Streak", best: "Best",
@@ -532,6 +534,15 @@ function renderStats() {
   const lost = spielVorbei && eingaben[eingaben.length - 1] !== ZIEL;
   answer.hidden = !lost;
   answer.textContent = t("answer") + ZIEL;
+  // Wie im Original begrüßt die Statistik nach dem Spiel: Glückwunsch bei Sieg, Dank sonst.
+  // Öffnet man sie mitten im Spiel über den Knopf, bleibt die Zeile weg.
+  const greeting = document.getElementById("stats-greeting");
+  greeting.hidden = !spielVorbei;
+  if (lost) {
+    greeting.textContent = t("greetingLost");
+  } else {
+    greeting.textContent = t("greetingWon");
+  }
   document.getElementById("stat-played").textContent = stat.gespielt;
   document.getElementById("label-played").textContent = t("played");
   document.getElementById("stat-win-rate").textContent = rate;

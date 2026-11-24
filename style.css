@@ -323,6 +323,9 @@ body { touch-action: manipulation; }
 .stats-inhalt h2 { margin: 0; font-size: 1.1rem; text-align: center; }
 .stats-inhalt h3 { margin: 16px 0 6px; font-size: 0.9rem; text-align: center; }
 .stats-modus { margin: 2px 0 14px; color: #a1a1aa; font-size: 0.8rem; text-align: center; }
+/* Seitlicher Abstand, damit die Zeile nicht unter das × zum Schließen läuft. */
+.stats-gruss { margin: 6px 0 14px; padding: 0 28px; font-size: 1.3rem; font-weight: 700; text-align: center; }
+.stats-gruss[hidden] { display: none; }
 .stats-loesung { margin: -6px 0 14px; font-weight: 700; letter-spacing: 1px; text-align: center; }
 .stats-loesung[hidden] { display: none; }
 
