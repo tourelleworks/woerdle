@@ -1,7 +1,7 @@
 // ============================================================
 // Woerdle - app.js
-// Features: Tages- & Endlos-Modus (beide werden gespeichert),
-// Lostrommel, anklickbare Felder, Statistik, Teilen,
+// Features: ein Tagesrätsel je Sprache (wird gespeichert),
+// anklickbare Felder, Statistik, Teilen,
 // Deutsch/Englisch umschaltbar.
 // ============================================================
 
@@ -11,17 +11,19 @@ const STAT_SCHLUESSEL = "woerdle-statistik";
 const STATS_OPEN_DELAY_MS = 1600;
 const REVEAL_DONE_MS = 1300;  // 5 Felder, je 0,2 s versetzt, jedes dreht sich 0,5 s (siehe style.css)
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.11";   // bei jedem Release hochzaehlen
+const APP_VERSION = "2.12";   // bei jedem Release hochzaehlen
+// Unter diesem Namen liegen Tagesspielstand und Tagesstatistik auf den Geräten. Er stammt aus der Zeit
+// mit zwei Modi und bleibt, damit vorhandene Spielstände und Statistiken weiter gefunden werden.
+const DAILY_KEY_PART = "taeglich";
 
 // --- Texte je Sprache ---
 const TEXTE = {
   de: {
-    daily: "Tägliches Wort", endless: "Endlos",
     fill5: "Bitte alle 5 Felder ausfüllen.",
     notinlist: "Dieses Wort ist nicht in der Liste.",
     won: "Gewonnen! 🎉", lost: "Verloren. Lösung: ",
     comeback: " (Komm morgen wieder!)", copied: "Ergebnis kopiert! 📋", copyFailed: "Kopieren nicht möglich",
-    share: "Ergebnis kopieren", again: "Nochmal spielen",
+    share: "Ergebnis kopieren",
     played: "Gespielt", winRate: "Siege %", streak: "Streak", best: "Beste",
     stats: "Statistik", guesses: "Versuche", nextWord: "Nächstes Wort in", langName: "Deutsch",
     shareTitle: "Wortsuchspiel", langBtn: "EN",
@@ -32,12 +34,11 @@ const TEXTE = {
     switchLanguage: "Sprache wechseln", close: "Schließen",
   },
   en: {
-    daily: "Daily word", endless: "Endless",
     fill5: "Please fill all 5 boxes.",
     notinlist: "This word is not in the list.",
     won: "You won! 🎉", lost: "You lost. Answer: ",
     comeback: " (Come back tomorrow!)", copied: "Result copied! 📋", copyFailed: "Could not copy",
-    share: "Copy result", again: "Play again",
+    share: "Copy result",
     played: "Played", winRate: "Win %", streak: "Streak", best: "Best",
     stats: "Statistics", guesses: "Guesses", nextWord: "Next word in", langName: "English",
     shareTitle: "Wordle", langBtn: "DE",
@@ -63,7 +64,6 @@ const TASTATUR_EN = [
 
 // --- Zustand ---
 let sprache = ladeSprache();   // "de" oder "en"
-let modus = ladeModus();       // laufendes Endlos-Spiel? sonst Tagesmodus
 let ZIEL = "";
 let aktuelleZeile = 0;
 let zeileBuchstaben = ["", "", "", "", ""];
@@ -230,11 +230,8 @@ function shakeRow() {
 }
 
 function verarbeiteTaste(taste) {
+  // Nach Spielende gibt es heute nichts mehr zu tippen, das nächste Rätsel kommt morgen.
   if (spielVorbei) {
-    // Im Endlos-Modus reicht Enter für die nächste Runde, die Hand bleibt auf der Tastatur.
-    if (taste === "Enter" && modus === "endlos") {
-      neuesEndlosSpiel();
-    }
     return;
   }
 
@@ -367,30 +364,24 @@ function showGameEnd(gewonnen) {
   } else {
     document.getElementById("meldung").textContent = t("lost") + ZIEL;
   }
-  if (modus === "taeglich") {
-    document.getElementById("neustart").hidden = true;
-    if (tagesDatum !== heuteText()) {
-      // altes Tagesspiel beendet -> heutiges Wort anbieten
-      tagesFrageZeigen(t("oldFinished"), t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
-    }
-  } else {
-    document.getElementById("neustart").hidden = false;
+  if (tagesDatum !== heuteText()) {
+    // altes Tagesspiel beendet -> heutiges Wort anbieten
+    tagesFrageZeigen(t("oldFinished"), t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
   }
 }
 
 // ------------------------------------------------------------
 // Statistik
 // ------------------------------------------------------------
-// Getrennt je Modus und Sprache, denn eine Streak aus Tagen und eine aus
-// Endlos-Runden lassen sich nicht sinnvoll zusammenzählen.
+// Getrennt je Sprache: Deutsch und Englisch sind zwei verschiedene Rätsel am selben Tag.
 function statsKey() {
-  return STAT_SCHLUESSEL + "-" + modus + "-" + sprache;
+  return STAT_SCHLUESSEL + "-" + DAILY_KEY_PART + "-" + sprache;
 }
 function emptyStats() {
   return {
     gespielt: 0, gewonnen: 0, streak: 0, maxStreak: 0,
     distribution: [0, 0, 0, 0, 0, 0],   // Siege je Versuchsanzahl (Index 0 = im 1. Versuch)
-    lastWinDate: null,                  // nur Tagesmodus: Datum des letzten gewonnenen Rätsels
+    lastWinDate: null,                  // Datum des letzten gewonnenen Rätsels
   };
 }
 function statistikLaden() {
@@ -402,7 +393,7 @@ function statistikLaden() {
   // Die alte Statistik mischte alle Modi und Sprachen und lässt sich nicht mehr aufteilen.
   // Sie zählt deshalb als deutsches Tagesrätsel, der alte Eintrag bleibt unverändert liegen.
   const old = localStorage.getItem(STAT_SCHLUESSEL);
-  if (old !== null && modus === "taeglich" && sprache === "de") {
+  if (old !== null && sprache === "de") {
     const oldStat = JSON.parse(old);
     stat.gespielt = oldStat.gespielt;
     stat.gewonnen = oldStat.gewonnen;
@@ -422,17 +413,13 @@ function statistikAktualisieren(hatGewonnen) {
   if (hatGewonnen) {
     stat.gewonnen = stat.gewonnen + 1;
     stat.distribution[eingaben.length - 1] = stat.distribution[eingaben.length - 1] + 1;
-    if (modus === "taeglich") {
-      // Tage zählen: Die Streak läuft nur weiter, wenn das Rätsel vom Vortag gewonnen wurde.
-      if (stat.lastWinDate !== null && dayNumber(tagesDatum) - dayNumber(stat.lastWinDate) === 1) {
-        stat.streak = stat.streak + 1;
-      } else {
-        stat.streak = 1;
-      }
-      stat.lastWinDate = tagesDatum;
-    } else {
+    // Tage zählen: Die Streak läuft nur weiter, wenn das Rätsel vom Vortag gewonnen wurde.
+    if (stat.lastWinDate !== null && dayNumber(tagesDatum) - dayNumber(stat.lastWinDate) === 1) {
       stat.streak = stat.streak + 1;
+    } else {
+      stat.streak = 1;
     }
+    stat.lastWinDate = tagesDatum;
     if (stat.streak > stat.maxStreak) {
       stat.maxStreak = stat.streak;
     }
@@ -444,9 +431,6 @@ function statistikAktualisieren(hatGewonnen) {
 // Gespeichert wird die Streak nur bei Spielende. Wurde seitdem ein Tag ausgelassen,
 // ist sie schon gerissen und muss beim Anzeigen als 0 erscheinen.
 function currentStreak(stat) {
-  if (modus !== "taeglich") {
-    return stat.streak;
-  }
   if (stat.lastWinDate === null) {
     return 0;
   }
@@ -503,13 +487,8 @@ function renderStats() {
     rate = Math.round((stat.gewonnen / stat.gespielt) * 100);
   }
   document.getElementById("stats-title").textContent = t("stats");
-  let modeName;
-  if (modus === "taeglich") {
-    modeName = t("daily");
-  } else {
-    modeName = t("endless");
-  }
-  document.getElementById("stats-mode").textContent = modeName + " · " + t("langName");
+  // Die Statistik gilt je Sprache, darum steht sie unter dem Titel.
+  document.getElementById("stats-mode").textContent = t("langName");
   document.getElementById("stat-played").textContent = stat.gespielt;
   document.getElementById("label-played").textContent = t("played");
   document.getElementById("stat-win-rate").textContent = rate;
@@ -521,18 +500,13 @@ function renderStats() {
   document.getElementById("distribution-title").textContent = t("guesses");
   renderDistribution(stat);
 
-  // Der große Knopf zeigt, was nach Spielende als Nächstes sinnvoll ist.
+  // Teilen und Countdown ergeben erst Sinn, wenn das heutige Rätsel fertig ist.
   const action = document.getElementById("stats-action");
   const nextWord = document.getElementById("next-word");
   action.hidden = !spielVorbei;
-  nextWord.hidden = !(spielVorbei && modus === "taeglich");
-  if (modus === "taeglich") {
-    action.textContent = t("share");
-    action.onclick = ergebnisTeilen;
-  } else {
-    action.textContent = t("again");
-    action.onclick = neuesEndlosSpiel;
-  }
+  nextWord.hidden = !spielVorbei;
+  action.textContent = t("share");
+  action.onclick = ergebnisTeilen;
 }
 
 function openStats() {
@@ -549,7 +523,7 @@ function openStats() {
   if (!action.hidden) {
     action.focus();
   }
-  if (spielVorbei && modus === "taeglich") {
+  if (spielVorbei) {
     updateCountdown();
     countdownTimer = setInterval(updateCountdown, 1000);
   }
@@ -577,13 +551,8 @@ function datumFormatiert(roh) {
   return tag + "." + monat + ".";
 }
 function baueTeilenText(gewonnen) {
-  let datumRoh;
-  if (modus === "taeglich") {
-    datumRoh = tagesDatum;
-  } else {
-    datumRoh = heuteText();
-  }
-  const datum = datumFormatiert(datumRoh);
+  // Das Datum des Rätsels, nicht das von heute: Ein nachgeholtes Rätsel von gestern trägt gestern.
+  const datum = datumFormatiert(tagesDatum);
   let kopf;
   if (gewonnen) {
     kopf = t("shareTitle") + " " + datum + "\n" + t("flagEmoji") + " " + verlauf.length + "/6";
@@ -645,14 +614,25 @@ function spracheUmschalten() {
   uiTexteSetzen();
   spielStarten();
 }
+// Bis v2.11 gab es einen Endlos-Modus. Seine Daten braucht niemand mehr; sie werden einmal
+// weggeräumt, damit nichts Veraltetes auf den Geräten liegen bleibt. Danach findet die Funktion
+// nichts mehr und tut nichts.
+function removeEndlessData() {
+  const oldKeys = [
+    "woerdle-modus",
+    "woerdle-endlos-de", "woerdle-endlos-en",
+    "woerdle-verwendet-de", "woerdle-verwendet-en",
+    "woerdle-statistik-endlos-de", "woerdle-statistik-endlos-en",
+  ];
+  for (const key of oldKeys) {
+    localStorage.removeItem(key);
+  }
+}
 function uiTexteSetzen() {
   // Vorlesehilfen und die Silbentrennung richten sich nach dieser Angabe.
   document.documentElement.lang = sprache;
   document.getElementById("sprache").setAttribute("aria-label", t("switchLanguage"));
   document.getElementById("stats-close").setAttribute("aria-label", t("close"));
-  document.getElementById("modus-taeglich").textContent = t("daily");
-  document.getElementById("modus-endlos").textContent = t("endless");
-  document.getElementById("neustart").textContent = t("again");
   document.getElementById("stats-button").setAttribute("aria-label", t("stats"));
   let flagge;
   if (sprache === "de") {
@@ -664,36 +644,7 @@ function uiTexteSetzen() {
 }
 
 // ------------------------------------------------------------
-// Modus-Anzeige
-// ------------------------------------------------------------
-function ladeModus() {
-  // zuletzt gewaehlten Tab wiederherstellen (Standard: Tagesmodus)
-  const m = localStorage.getItem("woerdle-modus");
-  if (m === null) {
-    return "taeglich";
-  }
-  return m;
-}
-function modusSetzen(neu) {
-  modus = neu;
-  localStorage.setItem("woerdle-modus", neu);
-  modusAnzeigen();
-  spielStarten();
-}
-function modusAnzeigen() {
-  const bt = document.getElementById("modus-taeglich");
-  const be = document.getElementById("modus-endlos");
-  bt.classList.remove("aktiv");
-  be.classList.remove("aktiv");
-  if (modus === "taeglich") {
-    bt.classList.add("aktiv");
-  } else {
-    be.classList.add("aktiv");
-  }
-}
-
-// ------------------------------------------------------------
-// Datum + Wort des Tages + Lostrommel
+// Datum + Wort des Tages
 // ------------------------------------------------------------
 function heuteText() {
   const d = new Date();
@@ -726,43 +677,11 @@ function dayNumber(dateText) {
   const msPerDay = 1000 * 60 * 60 * 24;
   return Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])) / msPerDay;
 }
-function verwendetSchluessel() {
-  return "woerdle-verwendet-" + sprache;
-}
-function ladeVerwendet() {
-  const roh = localStorage.getItem(verwendetSchluessel());
-  if (roh === null) {
-    return [];
-  }
-  return JSON.parse(roh);
-}
-function speichereVerwendet(liste) {
-  localStorage.setItem(verwendetSchluessel(), JSON.stringify(liste));
-}
-function naechstesZielwort() {
-  const liste = zielListe();
-  // Das heutige Tageswort auslassen, damit es nicht am selben Tag auch im Endlos-Modus kommt.
-  const todaysWord = wortDesTages();
-  let verwendet = ladeVerwendet();
-  let uebrig = liste.filter((w) => !verwendet.includes(w) && w !== todaysWord);
-  if (uebrig.length === 0) {
-    // Alle Wörter waren dran, neue Runde. Das zuletzt gespielte Wort auslassen,
-    // sonst könnte es am Rundenwechsel direkt zweimal hintereinander kommen.
-    const lastWord = verwendet[verwendet.length - 1];
-    verwendet = [];
-    uebrig = liste.filter((w) => w !== lastWord && w !== todaysWord);
-  }
-  const wort = uebrig[Math.floor(Math.random() * uebrig.length)];
-  verwendet.push(wort);
-  speichereVerwendet(verwendet);
-  return wort;
-}
-
 // ------------------------------------------------------------
-// Spielstand speichern / laden / wiederherstellen (beide Modi)
+// Spielstand speichern / laden / wiederherstellen
 // ------------------------------------------------------------
 function spielSchluessel() {
-  return "woerdle-" + modus + "-" + sprache;
+  return "woerdle-" + DAILY_KEY_PART + "-" + sprache;
 }
 function spielSpeichern(gewonnen, beendet) {
   const state = {
@@ -771,10 +690,8 @@ function spielSpeichern(gewonnen, beendet) {
     verlauf: verlauf,
     gewonnen: gewonnen,
     beendet: beendet,
+    datum: tagesDatum,
   };
-  if (modus === "taeglich") {
-    state.datum = tagesDatum;
-  }
   localStorage.setItem(spielSchluessel(), JSON.stringify(state));
 }
 function ladeSpielstand() {
@@ -807,13 +724,7 @@ function spielstandWiederherstellen(state) {
   if (state.beendet) {
     spielVorbei = true;
     teilenText = baueTeilenText(state.gewonnen);
-    let zusatz = "";
-    if (modus === "taeglich") {
-      document.getElementById("neustart").hidden = true;
-      zusatz = t("comeback");
-    } else {
-      document.getElementById("neustart").hidden = false;
-    }
+    const zusatz = t("comeback");
     if (state.gewonnen) {
       document.getElementById("meldung").textContent = t("won") + zusatz;
     } else {
@@ -835,7 +746,7 @@ function boardZuruecksetzen() {
   verlauf = [];
   eingaben = [];
 
-  // Beim Wechsel von Modus oder Sprache darf der Dialog des alten Spiels nicht mehr aufgehen.
+  // Beim Wechsel der Sprache darf der Dialog des alten Spiels nicht mehr aufgehen.
   clearTimeout(statsOpenTimer);
   closeStats();
   // Dasselbe gilt für alles, was noch aufs Umdrehen wartet: Es würde das neue Spiel einfärben.
@@ -845,7 +756,6 @@ function boardZuruecksetzen() {
   revealTimers = [];
 
   document.getElementById("meldung").textContent = "";
-  document.getElementById("neustart").hidden = true;
   document.getElementById("tages-frage").hidden = true;
 
   for (let zeile = 0; zeile < MAX_VERSUCHE; zeile++) {
@@ -868,52 +778,36 @@ function spielStarten() {
   shownDay = heuteText();
   boardZuruecksetzen();
   const g = ladeSpielstand();
+  const heute = heuteText();
+  const entschieden = localStorage.getItem("woerdle-tagesentscheidung-" + sprache) === heute;
 
-  if (modus === "taeglich") {
-    const heute = heuteText();
-    const entschieden = localStorage.getItem("woerdle-tagesentscheidung-" + sprache) === heute;
-    if (g !== null && g.datum === heute) {
-      ZIEL = g.ziel;
-      tagesDatum = heute;
-      spielstandWiederherstellen(g);
-    } else if (g !== null && g.beendet === false && !entschieden) {
-      // altes, unfertiges Tagesspiel + neues Wort verfuegbar -> fragen
-      ZIEL = g.ziel;
-      tagesDatum = g.datum;
-      spielstandWiederherstellen(g);
-      tagesFrageZeigen(
-        t("newDaily"),
-        t("continueBtn"),
-        function () { tagesEntscheidungMerken(); tagesFrageAltweiter(); },
-        t("newWordBtn"),
-        function () { tagesEntscheidungMerken(); neuesTageswort(); }
-      );
-    } else if (g !== null && g.beendet === false && entschieden) {
-      // hat sich fuers Weiterspielen entschieden -> altes Spiel fortsetzen
-      ZIEL = g.ziel;
-      tagesDatum = g.datum;
-      spielstandWiederherstellen(g);
-      tagesFrageAltweiter();
-    } else {
-      // kein oder bereits beendetes Tagesspiel -> heutiges Wort
-      ZIEL = wortDesTages();
-      tagesDatum = heute;
-    }
+  if (g !== null && g.datum === heute) {
+    ZIEL = g.ziel;
+    tagesDatum = heute;
+    spielstandWiederherstellen(g);
+  } else if (g !== null && g.beendet === false && !entschieden) {
+    // altes, unfertiges Tagesspiel + neues Wort verfügbar -> fragen
+    ZIEL = g.ziel;
+    tagesDatum = g.datum;
+    spielstandWiederherstellen(g);
+    tagesFrageZeigen(
+      t("newDaily"),
+      t("continueBtn"),
+      function () { tagesEntscheidungMerken(); tagesFrageAltweiter(); },
+      t("newWordBtn"),
+      function () { tagesEntscheidungMerken(); neuesTageswort(); }
+    );
+  } else if (g !== null && g.beendet === false && entschieden) {
+    // hat sich fürs Weiterspielen entschieden -> altes Spiel fortsetzen
+    ZIEL = g.ziel;
+    tagesDatum = g.datum;
+    spielstandWiederherstellen(g);
+    tagesFrageAltweiter();
   } else {
-    if (g !== null) {
-      ZIEL = g.ziel;
-      spielstandWiederherstellen(g);
-    } else {
-      startNextEndlessWord();
-    }
+    // kein oder bereits beendetes Tagesspiel -> heutiges Wort
+    ZIEL = wortDesTages();
+    tagesDatum = heute;
   }
-}
-
-// Das neue Wort sofort speichern, auch ohne Rateversuch. Sonst würde jedes Neuladen und jeder
-// Wechsel von Modus oder Sprache ein weiteres Wort ziehen und das alte ungespielt als "dran gewesen" zählen.
-function startNextEndlessWord() {
-  ZIEL = naechstesZielwort();
-  spielSpeichern(false, false);
 }
 
 // Eine App kann über Nacht offen bleiben, auf dem Handy auch im Hintergrund. Ohne diese Prüfung
@@ -928,17 +822,7 @@ function checkForNewDay() {
     return;
   }
   shownDay = today;
-  // Das Endlos-Spiel hängt nicht am Datum und läuft einfach weiter.
-  if (modus === "taeglich") {
-    spielStarten();
-  }
-}
-
-// "Weiterspielen" im Endlos-Modus: alten Stand verwerfen, neues Wort
-function neuesEndlosSpiel() {
-  localStorage.removeItem(spielSchluessel());
-  boardZuruecksetzen();
-  startNextEndlessWord();
+  spielStarten();
 }
 
 // --- Tagesrätsel-Frage: altes weiterspielen vs. neues Wort ---
@@ -985,10 +869,10 @@ function tagesFrageWeg() {
 // ------------------------------------------------------------
 // Start
 // ------------------------------------------------------------
+removeEndlessData();
 rasterAufbauen();
 tastaturAufbauen();
 document.addEventListener("keydown", tastendruck);
-document.getElementById("neustart").addEventListener("click", neuesEndlosSpiel);
 document.getElementById("stats-button").addEventListener("click", openStats);
 document.getElementById("stats-close").addEventListener("click", closeStats);
 const statsDialog = document.getElementById("stats-dialog");
@@ -1010,8 +894,6 @@ document.addEventListener("click", (event) => {
     button.blur();
   }
 });
-document.getElementById("modus-taeglich").addEventListener("click", () => modusSetzen("taeglich"));
-document.getElementById("modus-endlos").addEventListener("click", () => modusSetzen("endlos"));
 document.getElementById("sprache").addEventListener("click", spracheUmschalten);
 // Zurück in die App (Tab-Wechsel, Handy entsperrt) oder lange offen auf dem Schirm: neuer Tag?
 document.addEventListener("visibilitychange", checkForNewDay);
@@ -1019,7 +901,6 @@ window.addEventListener("focus", checkForNewDay);
 window.addEventListener("pageshow", checkForNewDay);
 setInterval(checkForNewDay, NEW_DAY_CHECK_MS);
 uiTexteSetzen();
-modusAnzeigen();
 spielStarten();
 document.getElementById("pwa-status").textContent = "v" + APP_VERSION;
 
