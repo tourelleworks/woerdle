@@ -1,8 +1,8 @@
 // ============================================================
-// Woerdle - app.js
-// Features: ein Tagesrätsel je Sprache (wird gespeichert),
-// anklickbare Felder, Statistik, Teilen,
-// Deutsch/Englisch umschaltbar.
+// Wortsuchspiel (früher Wördle) – app.js
+// Ein Tagesrätsel je Sprache (wird gespeichert), anklickbare Felder,
+// Statistik, Teilen, Deutsch/Englisch umschaltbar.
+// Die Farbvergabe steht in evaluate.js, die Wörter in woerter*.js.
 // ============================================================
 
 const WORTLAENGE = 5;
@@ -11,7 +11,7 @@ const STAT_SCHLUESSEL = "woerdle-statistik";
 const STATS_OPEN_DELAY_MS = 1600;
 const REVEAL_DONE_MS = 1300;  // 5 Felder, je 0,2 s versetzt, jedes dreht sich 0,5 s (siehe style.css)
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.12";   // bei jedem Release hochzaehlen
+const APP_VERSION = "2.13";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
 // Unter diesem Namen liegen Tagesspielstand und Tagesstatistik auf den Geräten. Er stammt aus der Zeit
 // mit zwei Modi und bleibt, damit vorhandene Spielstände und Statistiken weiter gefunden werden.
 const DAILY_KEY_PART = "taeglich";
@@ -66,13 +66,13 @@ const TASTATUR_EN = [
 let sprache = ladeSprache();   // "de" oder "en"
 let ZIEL = "";
 let aktuelleZeile = 0;
-let zeileBuchstaben = ["", "", "", "", ""];
+let zeileBuchstaben = emptyRow();
 let aktivesFeld = 0;
 let spielVorbei = false;
 let verlauf = [];
 let eingaben = [];
 let teilenText = "";
-let tagesDatum = "";           // Datum, zu dem das aktuelle Tagesspiel gehoert
+let tagesDatum = "";           // Datum, zu dem das aktuelle Tagesspiel gehört
 let statsOpenTimer = null;     // verzögertes Öffnen des Dialogs nach Spielende
 let countdownTimer = null;     // zählt im Dialog bis zum nächsten Tageswort herunter
 let shownDay = "";             // Tag, an dem das Spiel zuletzt gestartet wurde
@@ -80,6 +80,11 @@ let revealTimers = [];         // warten aufs Aufdecken: Tastenfarben und Spiele
 const felder = [];
 
 // --- kleine Helfer ---
+// Eine leere Eingabezeile. Aus WORTLAENGE gebildet, damit die Länge nur an einer Stelle steht.
+// Als function deklariert, weil sie schon oben bei den Zustandsvariablen gebraucht wird.
+function emptyRow() {
+  return new Array(WORTLAENGE).fill("");
+}
 function t(schluessel) {
   return TEXTE[sprache][schluessel];
 }
@@ -108,8 +113,12 @@ function rasterAufbauen() {
       feld.className = "feld";
       const z = zeile;
       const s = spalte;
+      // Ein Tipp auf ein Feld der aktuellen Zeile setzt die Schreibmarke dorthin, so lässt sich
+      // ein einzelner Buchstabe ändern, ohne alles dahinter zu löschen.
       feld.addEventListener("click", () => {
-        if (spielVorbei) return;
+        if (spielVorbei) {
+          return;
+        }
         if (z === aktuelleZeile) {
           aktivesFeld = s;
           eingabeAnzeigen();
@@ -128,16 +137,6 @@ function eingabeAnzeigen() {
     feld.classList.toggle("gefuellt", zeileBuchstaben[spalte] !== "");
     feld.classList.toggle("aktiv-feld", spalte === aktivesFeld);
   }
-}
-
-function naechstesLeeresFeld() {
-  for (let i = aktivesFeld + 1; i < WORTLAENGE; i++) {
-    if (zeileBuchstaben[i] === "") return i;
-  }
-  for (let i = 0; i < WORTLAENGE; i++) {
-    if (zeileBuchstaben[i] === "") return i;
-  }
-  return aktivesFeld;
 }
 
 // ------------------------------------------------------------
@@ -172,6 +171,9 @@ function tastaturAufbauen() {
   }
 }
 
+// Eine Taste zeigt das beste, was man über ihren Buchstaben schon weiß: Grün bleibt grün,
+// Gelb schlägt Grau. Sonst könnte ein späteres Grau (z. B. ein überzähliges M) ein früheres
+// Gelb oder Grün wieder verdecken.
 function tasteEinfaerben(buchstabe, farbe) {
   const knopf = document.querySelector('.taste[data-taste="' + buchstabe + '"]');
   if (knopf === null) {
@@ -266,7 +268,8 @@ function verarbeiteTaste(taste) {
   // eine echte Tastatur eingeben, das ohnehin in keinem englischen Wort vorkommen kann.
   if (tastaturLayout().flat().includes(taste.toUpperCase())) {
     zeileBuchstaben[aktivesFeld] = taste.toUpperCase();
-    // nach dem Tippen automatisch ein Feld weiter (bis zum letzten)
+    // Nach dem Tippen ein Feld weiter, damit man ein Wort am Stück eintippen kann. Auf dem
+    // letzten Feld bleibt die Marke stehen; ein weiterer Buchstabe ersetzt dann den fünften.
     if (aktivesFeld < WORTLAENGE - 1) {
       aktivesFeld = aktivesFeld + 1;
     }
@@ -302,7 +305,7 @@ function zeileAuswerten() {
 
   const gewonnen = wort === ZIEL;
   aktuelleZeile++;
-  zeileBuchstaben = ["", "", "", "", ""];
+  zeileBuchstaben = emptyRow();
   aktivesFeld = 0;
 
   if (gewonnen) {
@@ -315,9 +318,14 @@ function zeileAuswerten() {
   }
 }
 
-// Führt etwas aus, sobald die gerade geratene Zeile fertig umgedreht ist.
+// Führt etwas aus, sobald die gerade geratene Zeile fertig umgedreht ist. Die Uhr wird gemerkt,
+// damit ein Sprachwechsel sie abbrechen kann, und nach dem Ablaufen wieder vergessen.
 function afterReveal(action) {
-  revealTimers.push(setTimeout(action, REVEAL_DONE_MS));
+  const timer = setTimeout(() => {
+    revealTimers = revealTimers.filter((other) => other !== timer);
+    action();
+  }, REVEAL_DONE_MS);
+  revealTimers.push(timer);
 }
 
 function spielBeenden(gewonnen) {
@@ -704,7 +712,7 @@ function spielstandWiederherstellen(state) {
     eingaben.push(wort);
   }
   aktuelleZeile = state.eingaben.length;
-  zeileBuchstaben = ["", "", "", "", ""];
+  zeileBuchstaben = emptyRow();
   aktivesFeld = 0;
 
   if (state.beendet) {
@@ -717,11 +725,11 @@ function spielstandWiederherstellen(state) {
 }
 
 // ------------------------------------------------------------
-// Brett zuruecksetzen + Spiel starten
+// Brett zurücksetzen + Spiel starten
 // ------------------------------------------------------------
 function boardZuruecksetzen() {
   aktuelleZeile = 0;
-  zeileBuchstaben = ["", "", "", "", ""];
+  zeileBuchstaben = emptyRow();
   aktivesFeld = 0;
   spielVorbei = false;
   verlauf = [];
@@ -762,6 +770,8 @@ function spielStarten() {
   const heute = heuteText();
   const entschieden = localStorage.getItem("woerdle-tagesentscheidung-" + sprache) === heute;
 
+  // Vier Fälle: heutiges Spiel fortsetzen; altes unfertiges Spiel und noch nicht gefragt;
+  // altes unfertiges Spiel und schon fürs Weiterspielen entschieden; sonst das heutige Wort.
   if (g !== null && g.datum === heute) {
     ZIEL = g.ziel;
     tagesDatum = heute;
@@ -807,6 +817,7 @@ function checkForNewDay() {
 }
 
 // --- Tagesrätsel-Frage: altes weiterspielen vs. neues Wort ---
+// Die Antwort gilt für den ganzen Tag, damit die Frage nicht bei jedem Öffnen wiederkommt.
 function tagesEntscheidungMerken() {
   localStorage.setItem("woerdle-tagesentscheidung-" + sprache, heuteText());
 }
@@ -815,9 +826,11 @@ function neuesTageswort() {
   boardZuruecksetzen();
   ZIEL = wortDesTages();
   tagesDatum = heuteText();
-  spielSpeichern(false, false); // heutiges (leeres) Tagesspiel sichern, ersetzt das alte
+  // Das heutige (noch leere) Spiel gleich sichern: Es ersetzt das alte, sonst käme die Frage
+  // nach dem Neuladen wieder.
+  spielSpeichern(false, false);
 }
-// kleiner Knopf, um beim Weiterspielen jederzeit zum heutigen Wort zu wechseln
+// Kleiner Knopf, um beim Weiterspielen jederzeit zum heutigen Wort zu wechseln.
 function tagesFrageAltweiter() {
   tagesFrageZeigen(null, t("todayWordBtn"), function () { neuesTageswort(); }, null, null);
 }
@@ -893,8 +906,8 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("service-worker.js")
       .then(() => {
-        const el = document.getElementById("pwa-status");
-        if (el) el.textContent = "v" + APP_VERSION + " ✓";
+        // Das Häkchen zeigt: Der Offline-Speicher ist eingerichtet, das Spiel geht auch ohne Netz.
+        document.getElementById("pwa-status").textContent = "v" + APP_VERSION + " ✓";
       })
       .catch((err) => console.error("Service Worker Fehler:", err));
   });
