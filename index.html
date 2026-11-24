@@ -19,16 +19,20 @@
 </head>
 <body>
 <header class="app-header">
-  <!-- Menü links wie im Original: Dort stehen „Fehler melden“ und die Versionsnummer, nicht auf dem Spielfeld. -->
-  <button id="menu-button" class="kopf-knopf menu-knopf" aria-label="Menü">
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor">
-      <rect x="3" y="5" width="18" height="2.4" rx="1.2" />
-      <rect x="3" y="10.8" width="18" height="2.4" rx="1.2" />
-      <rect x="3" y="16.6" width="18" height="2.4" rx="1.2" />
-    </svg>
-  </button>
-  <img src="icons/cat-silhouette.svg" alt="" class="katze-ecke" />
+  <!-- Links: Sprache und Anleitung. Die Katze ist nur Schmuck und tritt auf Handys zurück. -->
+  <div class="kopf-links">
+    <button id="sprache" class="sprache-knopf" aria-label="Sprache wechseln"><img id="sprache-flagge" alt="" /></button>
+    <button id="help-button" class="kopf-knopf" aria-label="Anleitung">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1" />
+        <circle cx="12" cy="17.6" r="0.6" fill="currentColor" />
+      </svg>
+    </button>
+    <img src="icons/cat-silhouette.svg" alt="" class="katze-ecke" />
+  </div>
   <h1><img src="icons/icon-192.png" alt="Logo" class="logo" /> Wortsuchspiel</h1>
+  <!-- Rechts: Statistik und Einstellungen (dort auch „Fehler melden“ und die Versionsnummer). -->
   <div class="kopf-knoepfe">
     <button id="stats-button" class="kopf-knopf" aria-label="Statistik">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor">
@@ -37,7 +41,11 @@
         <rect x="16" y="8" width="4" height="12" rx="1" />
       </svg>
     </button>
-    <button id="sprache" class="sprache-knopf" aria-label="Sprache wechseln"><img id="sprache-flagge" alt="" /></button>
+    <button id="settings-button" class="kopf-knopf" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor">
+        <path fill-rule="evenodd" d="M10.3 2h3.4l.5 2.6a7.8 7.8 0 0 1 1.9 1.1l2.5-.9 1.7 2.9-2 1.7a7.9 7.9 0 0 1 0 2.2l2 1.7-1.7 2.9-2.5-.9a7.8 7.8 0 0 1-1.9 1.1l-.5 2.6h-3.4l-.5-2.6a7.8 7.8 0 0 1-1.9-1.1l-2.5.9-1.7-2.9 2-1.7a7.9 7.9 0 0 1 0-2.2l-2-1.7 1.7-2.9 2.5.9a7.8 7.8 0 0 1 1.9-1.1zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" transform="translate(0 1)" />
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -82,13 +90,22 @@
     </div>
   </dialog>
 
-  <!-- Menü: alles, was nicht zum Spielen gebraucht wird, aber erreichbar sein soll. -->
-  <dialog id="menu-dialog" class="stats-dialog" aria-labelledby="menu-title">
+  <!-- Einstellungen: alles, was nicht zum Spielen gebraucht wird, aber erreichbar sein soll. -->
+  <dialog id="settings-dialog" class="stats-dialog" aria-labelledby="settings-title">
     <div class="stats-inhalt">
-      <button id="menu-close" class="stats-schliessen" aria-label="Schließen">×</button>
-      <h2 id="menu-title">Menü</h2>
-      <button type="button" id="menu-report" class="menu-eintrag" data-fehler-melden="1">Fehler melden</button>
+      <button id="settings-close" class="stats-schliessen" aria-label="Schließen">×</button>
+      <h2 id="settings-title">Einstellungen</h2>
+      <button type="button" id="settings-report" class="menu-eintrag" data-fehler-melden="1">Fehler melden</button>
       <p class="menu-fuss"><span id="pwa-status">Wortsuchspiel</span><br /><span id="puzzle-number"></span></p>
+    </div>
+  </dialog>
+
+  <!-- Anleitung: Regeln mit Beispielen. Die Texte und Beispiele setzt app.js je nach Sprache. -->
+  <dialog id="help-dialog" class="stats-dialog" aria-labelledby="help-title">
+    <div class="stats-inhalt anleitung">
+      <button id="help-close" class="stats-schliessen" aria-label="Schließen">×</button>
+      <h2 id="help-title"></h2>
+      <div id="help-content"></div>
     </div>
   </dialog>
 
