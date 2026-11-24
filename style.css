@@ -98,18 +98,6 @@ code {
   .feld { font-size: 1.6rem; }
 }
 
-.neustart {
-  margin-top: 8px;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  background: var(--gruen);
-  cursor: pointer;
-}
-
 .tastatur {
   display: flex;
   flex-direction: column;
@@ -164,7 +152,7 @@ code {
 }
 .feld.wackeln { animation: wackeln 0.12s linear 3; }
 
-.modus-wahl { display: flex; gap: 6px; margin-bottom: 14px; }
+/* Runde Knöpfe der Tagesrätsel-Frage („Weiterspielen“, „Neues Wort“, „Heutiges Wort“) */
 .modus-knopf {
   border: 1px solid var(--rahmen);
   background: transparent;
@@ -174,7 +162,6 @@ code {
   font-size: 0.85rem;
   cursor: pointer;
 }
-.modus-knopf.aktiv { background: #4f46e5; border-color: transparent; }
 
 /* Aktives Feld hervorheben (anklickbar) */
 .feld.aktiv-feld {
@@ -284,7 +271,7 @@ main { min-height: 0; padding: 8px; gap: 2px; justify-content: flex-start; }
 
 /* Doppeltipp-Zoom auf dem Handy verhindern */
 body { touch-action: manipulation; }
-.taste, .feld, .modus-knopf, .neustart, .sprache-knopf, .kopf-knopf, .stats-aktion, .stats-schliessen {
+.taste, .feld, .modus-knopf, .sprache-knopf, .kopf-knopf, .stats-aktion, .stats-schliessen {
   touch-action: manipulation;
 }
 
@@ -368,7 +355,7 @@ body { touch-action: manipulation; }
 .stats-aktion[hidden] { display: none; }
 
 /* Nur das Spielfeld darf schrumpfen, sonst drücken Meldung und Knöpfe die Tastatur aus dem Bild */
-.modus-wahl, .meldung, .tages-frage, .neustart, .tastatur { flex-shrink: 0; }
+.meldung, .tages-frage, .tastatur { flex-shrink: 0; }
 
 /* Ältere Browser ohne cqh behalten einfach die feste Feldgröße von weiter oben. */
 @supports (height: 1cqh) {
@@ -396,8 +383,8 @@ body { touch-action: manipulation; }
   main {
     display: grid;
     grid-template-columns: auto minmax(0, 500px);
-    /* Modus, Meldung, Frage, Neustart, freier Platz, Tastatur */
-    grid-template-rows: auto auto auto auto 1fr auto;
+    /* Meldung, Frage, freier Platz, Tastatur */
+    grid-template-rows: auto auto 1fr auto;
     justify-content: center;
     column-gap: 16px;
   }
@@ -409,14 +396,13 @@ body { touch-action: manipulation; }
   }
   /* Hier zählt die Fensterhöhe: 92px = Kopfzeile 46px + Innenabstand 16px + 5 Abstände à 6px. */
   .raster { --cell: min(58px, calc((100dvh - 92px) / 6)); }
-  .modus-wahl, .meldung, .tages-frage, .neustart {
+  .meldung, .tages-frage {
     grid-column: 2;
     justify-self: center;
   }
-  .modus-wahl { margin-bottom: 4px; }
   #tastatur {
     grid-column: 2;
-    grid-row: 6;
+    grid-row: 4;
   }
 }
 /* Der Name „Wortsuchspiel“ ist länger als „Wördle“: Auf schmalen Handys würde er sonst unter
