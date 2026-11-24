@@ -33,6 +33,12 @@
   </div>
 </header>
 
+  <!-- Eigene schmale Zeile unter der Kopfzeile: Über dem Spielfeld läge sie auf den Feldern, unten auf der Löschen-Taste. -->
+  <footer class="app-footer">
+    <span id="pwa-status">Web-Version</span>
+    <button type="button" class="twf-link" data-fehler-melden="1">Fehler melden</button>
+  </footer>
+
   <main>
     <!-- Das Raster (6 Zeilen x 5 Felder) wird per JavaScript gefüllt. -->
     <!-- Die Hülle gibt dem Raster die freie Höhe vor, siehe .raster-box in style.css. -->
@@ -51,11 +57,6 @@
     </p>
     <div id="tastatur" class="tastatur"></div>
   </main>
-
-  <footer class="app-footer">
-    <span id="pwa-status">Web-Version</span>
-    <button type="button" class="twf-link" data-fehler-melden="1">Fehler melden</button>
-  </footer>
 
   <!-- Statistik-Dialog: dialog bringt Fokus, Esc-Taste und abgedunkelten Hintergrund schon mit. -->
   <dialog id="stats-dialog" class="stats-dialog" aria-labelledby="stats-title">
