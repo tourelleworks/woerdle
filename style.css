@@ -4,7 +4,7 @@
   --rahmen: #3a3a3c;
   --rahmen-hell: #565758;
   --gruen: #6aaa64;
-  --gelb: #c9b458;   /* schon vordefiniert – brauchst du in M2 */
+  --gelb: #c9b458;
   --grau: #3a3a3c;
 }
 
@@ -130,7 +130,7 @@ code {
 .taste.gelb  { background: var(--gelb); }
 .taste.grau  { background: #3a3a3c; }
 
-/* Aufdeck-Animation (M6) */
+/* Aufdeck-Animation: Jedes Feld klappt einmal um, wenn ein Wort ausgewertet wird. */
 @keyframes aufdecken {
   0%   { transform: scaleY(1); }
   50%  { transform: scaleY(0); }
