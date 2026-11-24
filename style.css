@@ -435,10 +435,10 @@ body { touch-action: manipulation; }
     grid-template-columns: repeat(5, var(--cell));
     grid-auto-rows: var(--cell);
     margin-bottom: 0;
-    /* Genau mittig wirkte das Raster etwas zu tief. Es rückt bis zu 24px nach oben, aber nur
+    /* Genau mittig wirkte das Raster etwas zu tief. Es rückt bis zu 40px nach oben, aber nur
        so weit, wie über ihm Platz frei ist (die Hälfte des Rests neben 6 Feldern + 5 Abständen).
        So werden die Felder auf kleinen Handys dafür nicht kleiner. */
-    transform: translateY(calc(-1 * min(24px, (100cqh - 6 * var(--cell) - 30px) / 2)));
+    transform: translateY(calc(-1 * min(40px, (100cqh - 6 * var(--cell) - 30px) / 2)));
   }
   .feld { font-size: calc(var(--cell) * 0.55); }
 }
