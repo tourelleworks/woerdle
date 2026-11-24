@@ -13,7 +13,7 @@ const TOAST_MS = 1500;        // so lange bleibt eine Einblendung stehen
 // Die Statistik geht erst auf, wenn die letzte Zeile umgedreht ist und die Einblendung gelesen wurde.
 const STATS_OPEN_DELAY_MS = REVEAL_DONE_MS + TOAST_MS;
 const NEW_DAY_CHECK_MS = 60000;
-const APP_VERSION = "2.14";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
+const APP_VERSION = "2.15";   // bei jedem Release hochzählen, zusammen mit CACHE_VERSION im Service Worker
 // Unter diesem Namen liegen Tagesspielstand und Tagesstatistik auf den Geräten. Er stammt aus der Zeit
 // mit zwei Modi und bleibt, damit vorhandene Spielstände und Statistiken weiter gefunden werden.
 const DAILY_KEY_PART = "taeglich";
@@ -36,7 +36,21 @@ const TEXTE = {
     todayWordBtn: "Heutiges Wort", oldFinished: "Altes Spiel beendet.",
     flagEmoji: "🇩🇪",
     switchLanguage: "Sprache wechseln", close: "Schließen",
-    menu: "Menü", reportBug: "Fehler melden", puzzle: "Rätsel Nr. ",
+    settings: "Einstellungen", reportBug: "Fehler melden", puzzle: "Rätsel Nr. ",
+    help: "Anleitung", helpTitle: "So wird gespielt",
+    helpIntro: [
+      "Errate das Wort des Tages in 6 Versuchen.",
+      "Jeder Versuch muss ein Wort mit 5 Buchstaben sein, das es gibt.",
+      "Nach jedem Versuch zeigen die Farben, wie nah du dran bist.",
+    ],
+    helpExamplesTitle: "Beispiele",
+    // index: welcher Buchstabe eingefärbt ist; color: wie in evaluate.js
+    helpExamples: [
+      { word: "STURM", index: 0, color: "gruen", text: "S steht an der richtigen Stelle." },
+      { word: "KRONE", index: 2, color: "gelb", text: "O kommt im Wort vor, aber an einer anderen Stelle." },
+      { word: "BLATT", index: 1, color: "grau", text: "L kommt im Wort nicht vor." },
+    ],
+    helpOutro: "Jeden Tag um Mitternacht gibt es ein neues Rätsel.",
   },
   en: {
     fill5: "Please fill all 5 boxes.",
@@ -53,7 +67,20 @@ const TEXTE = {
     todayWordBtn: "Today's word", oldFinished: "Old game finished.",
     flagEmoji: "🇬🇧",
     switchLanguage: "Switch language", close: "Close",
-    menu: "Menu", reportBug: "Report a problem", puzzle: "Puzzle no. ",
+    settings: "Settings", reportBug: "Report a problem", puzzle: "Puzzle no. ",
+    help: "How to play", helpTitle: "How to play",
+    helpIntro: [
+      "Guess the word of the day in 6 tries.",
+      "Each guess must be a valid 5-letter word.",
+      "After each guess, the colors show how close you are.",
+    ],
+    helpExamplesTitle: "Examples",
+    helpExamples: [
+      { word: "CRANE", index: 0, color: "gruen", text: "C is in the word and in the right spot." },
+      { word: "PLANT", index: 2, color: "gelb", text: "A is in the word but in the wrong spot." },
+      { word: "STORM", index: 4, color: "grau", text: "M is not in the word in any spot." },
+    ],
+    helpOutro: "A new puzzle is released every day at midnight.",
   },
 };
 
@@ -552,10 +579,10 @@ function closeStats() {
 }
 
 // ------------------------------------------------------------
-// Menü
+// Einstellungen und Anleitung
 // ------------------------------------------------------------
-function openMenu() {
-  const dialog = document.getElementById("menu-dialog");
+function openSettings() {
+  const dialog = document.getElementById("settings-dialog");
   if (dialog.open) {
     return;
   }
@@ -563,11 +590,84 @@ function openMenu() {
   document.getElementById("puzzle-number").textContent = t("puzzle") + puzzleNumber();
   dialog.showModal();
 }
-function closeMenu() {
-  const dialog = document.getElementById("menu-dialog");
+function closeSettings() {
+  const dialog = document.getElementById("settings-dialog");
   if (dialog.open) {
     dialog.close();
   }
+}
+
+// Baut die Anleitung in der aktuellen Sprache. Alles über textContent, damit kein Text
+// versehentlich als HTML gelesen wird.
+function renderHelp() {
+  document.getElementById("help-title").textContent = t("helpTitle");
+  const box = document.getElementById("help-content");
+  box.innerHTML = "";
+  const intro = document.createElement("ul");
+  for (const line of t("helpIntro")) {
+    const item = document.createElement("li");
+    item.textContent = line;
+    intro.appendChild(item);
+  }
+  box.appendChild(intro);
+
+  const examplesTitle = document.createElement("h3");
+  examplesTitle.textContent = t("helpExamplesTitle");
+  box.appendChild(examplesTitle);
+  for (const example of t("helpExamples")) {
+    // Kleine Felder wie im Spiel; nur der erklärte Buchstabe ist eingefärbt.
+    const row = document.createElement("div");
+    row.className = "beispiel-zeile";
+    for (let i = 0; i < example.word.length; i++) {
+      const cell = document.createElement("span");
+      cell.className = "beispiel-feld";
+      if (i === example.index) {
+        cell.classList.add(example.color);
+      }
+      cell.textContent = example.word[i];
+      row.appendChild(cell);
+    }
+    box.appendChild(row);
+    const text = document.createElement("p");
+    text.textContent = example.text;
+    box.appendChild(text);
+  }
+
+  const outro = document.createElement("p");
+  outro.className = "anleitung-schluss";
+  outro.textContent = t("helpOutro");
+  box.appendChild(outro);
+}
+function openHelp() {
+  const dialog = document.getElementById("help-dialog");
+  if (dialog.open) {
+    return;
+  }
+  document.activeElement.blur();
+  renderHelp();
+  dialog.showModal();
+  // Gesehen ist gesehen: Beim nächsten Öffnen der App geht die Anleitung nicht mehr von selbst auf.
+  localStorage.setItem("woerdle-anleitung-gesehen", "1");
+}
+function closeHelp() {
+  const dialog = document.getElementById("help-dialog");
+  if (dialog.open) {
+    dialog.close();
+  }
+}
+// Wie im Original bekommt nur, wer zum ersten Mal da ist, die Anleitung von selbst gezeigt.
+// Wer schon vor der Anleitung gespielt hat, hat Spielstand oder Statistik und kennt das Spiel.
+function isFirstVisit() {
+  if (localStorage.getItem("woerdle-anleitung-gesehen") !== null) {
+    return false;
+  }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith("woerdle-taeglich-") || key.startsWith("woerdle-statistik")) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // ------------------------------------------------------------
@@ -669,10 +769,12 @@ function uiTexteSetzen() {
   document.getElementById("sprache").setAttribute("aria-label", t("switchLanguage"));
   document.getElementById("stats-close").setAttribute("aria-label", t("close"));
   document.getElementById("stats-button").setAttribute("aria-label", t("stats"));
-  document.getElementById("menu-button").setAttribute("aria-label", t("menu"));
-  document.getElementById("menu-close").setAttribute("aria-label", t("close"));
-  document.getElementById("menu-title").textContent = t("menu");
-  document.getElementById("menu-report").textContent = t("reportBug");
+  document.getElementById("settings-button").setAttribute("aria-label", t("settings"));
+  document.getElementById("settings-close").setAttribute("aria-label", t("close"));
+  document.getElementById("settings-title").textContent = t("settings");
+  document.getElementById("settings-report").textContent = t("reportBug");
+  document.getElementById("help-button").setAttribute("aria-label", t("help"));
+  document.getElementById("help-close").setAttribute("aria-label", t("close"));
   let flagge;
   if (sprache === "de") {
     flagge = "icons/flag-de.svg";
@@ -933,19 +1035,28 @@ statsDialog.addEventListener("close", () => {
   clearInterval(countdownTimer);
   checkForNewDay();
 });
-// Menü: Knopf links oben, schließen mit ×, Esc oder einem Klick daneben.
-const menuDialog = document.getElementById("menu-dialog");
-document.getElementById("menu-button").addEventListener("click", openMenu);
-document.getElementById("menu-close").addEventListener("click", closeMenu);
-menuDialog.addEventListener("click", (event) => {
-  if (event.target === menuDialog) {
-    closeMenu();
+// Einstellungen (rechts oben) und Anleitung (links oben): schließen mit ×, Esc oder einem Klick daneben.
+const settingsDialog = document.getElementById("settings-dialog");
+document.getElementById("settings-button").addEventListener("click", openSettings);
+document.getElementById("settings-close").addEventListener("click", closeSettings);
+settingsDialog.addEventListener("click", (event) => {
+  if (event.target === settingsDialog) {
+    closeSettings();
   }
 });
-menuDialog.addEventListener("close", checkForNewDay);
-// „Fehler melden“ öffnet fehler.js selbst (es lauscht auf data-fehler-melden); das Menü geht dabei zu,
-// damit nach dem Melden wieder das Spiel zu sehen ist.
-document.getElementById("menu-report").addEventListener("click", closeMenu);
+settingsDialog.addEventListener("close", checkForNewDay);
+// „Fehler melden“ öffnet fehler.js selbst (es lauscht auf data-fehler-melden); die Einstellungen gehen
+// dabei zu, damit nach dem Melden wieder das Spiel zu sehen ist.
+document.getElementById("settings-report").addEventListener("click", closeSettings);
+const helpDialog = document.getElementById("help-dialog");
+document.getElementById("help-button").addEventListener("click", openHelp);
+document.getElementById("help-close").addEventListener("click", closeHelp);
+helpDialog.addEventListener("click", (event) => {
+  if (event.target === helpDialog) {
+    closeHelp();
+  }
+});
+helpDialog.addEventListener("close", checkForNewDay);
 // Maus-Klicks hinterlassen sonst den Fokus auf dem Knopf, und Enter würde ihn erneut auslösen.
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
@@ -959,10 +1070,15 @@ document.addEventListener("visibilitychange", checkForNewDay);
 window.addEventListener("focus", checkForNewDay);
 window.addEventListener("pageshow", checkForNewDay);
 setInterval(checkForNewDay, NEW_DAY_CHECK_MS);
+// Muss vor spielStarten stehen: Danach liegt schon ein Spielstand im Speicher.
+const firstVisit = isFirstVisit();
 uiTexteSetzen();
 spielStarten();
-// Wie im Original: Wer das heutige Rätsel schon gelöst hat und wiederkommt, sieht gleich die Statistik.
-if (spielVorbei && tagesDatum === heuteText()) {
+// Wie im Original: Neue Spieler sehen zuerst die Anleitung. Wer das heutige Rätsel schon gelöst
+// hat und wiederkommt, sieht gleich die Statistik.
+if (firstVisit) {
+  openHelp();
+} else if (spielVorbei && tagesDatum === heuteText()) {
   openStats();
 }
 document.getElementById("pwa-status").textContent = "Wortsuchspiel v" + APP_VERSION;
