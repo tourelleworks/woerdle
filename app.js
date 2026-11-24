@@ -280,34 +280,8 @@ function verarbeiteTaste(taste) {
 // ------------------------------------------------------------
 function zeileAuswerten() {
   const wort = zeileBuchstaben.join("");
-
-  const rest = {};
-  for (let i = 0; i < WORTLAENGE; i++) {
-    const b = ZIEL[i];
-    if (rest[b] === undefined) {
-      rest[b] = 0;
-    }
-    rest[b] = rest[b] + 1;
-  }
-
-  const ergebnis = new Array(WORTLAENGE);
-  for (let i = 0; i < WORTLAENGE; i++) {
-    if (wort[i] === ZIEL[i]) {
-      ergebnis[i] = "gruen";
-      rest[wort[i]] = rest[wort[i]] - 1;
-    }
-  }
-  for (let i = 0; i < WORTLAENGE; i++) {
-    if (ergebnis[i] === undefined) {
-      const b = wort[i];
-      if (rest[b] > 0) {
-        ergebnis[i] = "gelb";
-        rest[b] = rest[b] - 1;
-      } else {
-        ergebnis[i] = "grau";
-      }
-    }
-  }
+  // Welche Farbe jeder Buchstabe bekommt, rechnet evaluate.js aus; hier wird nur angezeigt.
+  const ergebnis = evaluateGuess(ZIEL, wort);
 
   for (let i = 0; i < WORTLAENGE; i++) {
     const feld = felder[aktuelleZeile][i];

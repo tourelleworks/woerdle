@@ -5,7 +5,8 @@ Ein Wortratespiel auf Deutsch und Englisch: Errate das 5-Buchstaben-Wort in
 
 - 🟩 **grün** – richtiger Buchstabe, richtige Stelle
 - 🟨 **gelb** – Buchstabe kommt vor, aber an anderer Stelle
-- ⬜ **grau** – Buchstabe kommt nicht vor
+- ⬜ **grau** – Buchstabe kommt nicht vor (oder nicht so oft: Rätst du zwei M
+  und das Wort hat nur eins, wird das zweite M grau)
 
 **Live:** https://woerdle.tourelleworks.de
 
@@ -32,13 +33,25 @@ unter der eigenen Domain ausliefert (und nicht unter einem Unterpfad).
 .
 ├── index.html          # Grundgerüst der Seite
 ├── style.css           # gesamtes Styling
-├── app.js              # Spiel-Logik (Eingabe, Auswertung, Modi, Sprachen)
+├── app.js              # Spiel-Logik (Eingabe, Anzeige, Tagesrätsel, Sprachen)
+├── evaluate.js         # Farbvergabe für einen Rateversuch (ohne Zugriff auf die Seite)
 ├── woerter.js          # deutsche Wortlisten (Ziel- und erlaubte Wörter)
 ├── woerter-en.js       # englische Wortlisten
 ├── manifest.json       # PWA-Manifest (Name, Icons, Startseite)
 ├── service-worker.js   # Offline-Cache und automatische Updates
+├── zaehler.js          # Aufrufzähler von tourelleworks.de (ohne Cookie)
+├── fehler.js/.css      # „Fehler melden“ (gleiche Datei in allen TourelleWorks-Apps)
+├── tests/              # automatische Tests (Farbvergabe, Wortlisten)
 ├── icons/              # App-Icons, Flaggen, Katzen-Silhouette
 └── CNAME               # eigene Domain für GitHub Pages
+```
+
+## Tests
+
+Ohne Installation, mit dem in Node eingebauten Testlauf. Im Projektordner:
+
+```
+node --test
 ```
 
 ## Lokal starten
