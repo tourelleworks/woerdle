@@ -1,0 +1,16 @@
+// Cloudflare-Konfiguration: Die App ist eine reine Sammlung statischer Dateien und läuft seit
+// 2026-11-28 als Cloudflare-Worker ohne eigenes Skript (vorher GitHub Pages).
+// Warum umgezogen? Das Anmelde-Cookie des TourelleWorks-Kontos gilt für alle *.tourelleworks.de.
+// Bei GitHub Pages landete es mit jedem Aufruf in den Server-Protokollen von GitHub.
+// Ausrollen: npx wrangler deploy (aus einer sauberen Git-Kopie, siehe README).
+{
+  "name": "woerdle",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // Wurzel des Repos; was nicht öffentlich sein soll, steht in .assetsignore.
+    "directory": "./"
+  },
+  "workers_dev": true,
+  // Eigene Adresse; Cloudflare legt DNS-Eintrag und Zertifikat selbst an.
+  "routes": [{ "pattern": "woerdle.tourelleworks.de", "custom_domain": true }]
+}

@@ -1,0 +1,14 @@
+# Dateien, die nicht als Teil der App ausgeliefert werden (Syntax wie .gitignore).
+.git
+.git/
+.gitignore
+.assetsignore
+.idea/
+wrangler.jsonc
+.wrangler/
+CNAME
+README.md
+tests/
+node_modules/
+notizen/
+CLAUDE.md

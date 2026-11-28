@@ -26,8 +26,8 @@ Ein Wortratespiel auf Deutsch und Englisch: Errate das 5-Buchstaben-Wort in
 
 ## Projektstruktur
 
-Die App liegt bewusst im **Wurzelverzeichnis**, damit GitHub Pages sie direkt
-unter der eigenen Domain ausliefert (und nicht unter einem Unterpfad).
+Die App liegt bewusst im **Wurzelverzeichnis** und wird von dort direkt unter der
+eigenen Domain ausgeliefert (und nicht unter einem Unterpfad).
 
 ```
 .
@@ -43,7 +43,8 @@ unter der eigenen Domain ausliefert (und nicht unter einem Unterpfad).
 ├── fehler.js/.css      # „Fehler melden“ (gleiche Datei in allen TourelleWorks-Apps)
 ├── tests/              # automatische Tests (Farbvergabe, Wortlisten)
 ├── icons/              # App-Icons, Flaggen, Katzen-Silhouette
-└── CNAME               # eigene Domain für GitHub Pages
+├── wrangler.jsonc      # Cloudflare: Worker nur mit Dateien, eigene Domain
+└── .assetsignore       # was nicht ausgeliefert wird (Tests, README, Konfiguration)
 ```
 
 ## Tests
@@ -68,9 +69,12 @@ Dann http://localhost:8000 öffnen. In WebStorm geht auch: Rechtsklick auf
 
 ## Deployment
 
-Veröffentlicht über **GitHub Pages** mit „Deploy from a branch"
-(Branch `master`, Ordner `/ (root)`). Die Datei `CNAME` im Wurzelverzeichnis
-bindet die eigene Domain `woerdle.tourelleworks.de`.
+Seit 2026-11-28 ein **Cloudflare-Worker nur mit Dateien** (`wrangler.jsonc`) unter
+`woerdle.tourelleworks.de`; vorher GitHub Pages. Grund: Das Anmelde-Cookie des
+TourelleWorks-Kontos gilt für alle `*.tourelleworks.de` und landete bei GitHub.
+
+Ausrollen: `npx wrangler deploy` im Repo-Ordner. Was nicht öffentlich sein soll
+(Tests, README, Konfiguration), steht in `.assetsignore`.
 
 Bei jedem Release hochzählen:
 
